@@ -128,6 +128,13 @@
   .piece.hasball::after{pointer-events:none;}
   .piece.expanded{width:44%; z-index:6;}
   .piece.psel{width:54%; z-index:8;}          /* 選択駒を拡大（Unity風ズーム）*/
+  /* 保持駒の上のタップ可能なボール（駒とは別タップ対象） */
+  .balltap{position:absolute; right:-7px; bottom:-7px; width:20px; height:20px; padding:0;
+    border-radius:50%; border:2px solid rgba(255,255,255,.9); background:rgba(255,255,255,.12);
+    pointer-events:auto; cursor:pointer; z-index:9; box-shadow:0 0 7px rgba(255,255,255,.75);
+    animation:ballPulse 1.4s ease-in-out infinite;}
+  .balltap.active{border-color:#ffe14d; box-shadow:0 0 10px #ffe14d;}
+  @keyframes ballPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.13);}}
   /* 放射状メニュー：駒中心に配置し、上下左右へボタンを散らす */
   .radialMenu{position:absolute; width:0; height:0; z-index:9; pointer-events:none;}
   .radialBtn{position:absolute; pointer-events:auto; transform:translate(-50%,-50%);
@@ -230,18 +237,12 @@
   <div class="boardWrap">
     <div class="board" id="board"></div>
     <div class="fxLayer" id="fxLayer"></div>
-    <div class="radialMenu" id="radialMenu" style="display:none"></div>
-  </div>
-
-  <div id="actionBar" style="display:none; gap:8px; margin-top:8px;">
-    <button class="btn" id="passModeBtn">パス</button>
-    <button class="btn" id="dribbleModeBtn">ドリブル/移動</button>
-    <button class="btn gold" id="shootInlineBtn">シュート</button>
-    <button class="btn" id="holdBtn">ここで保持</button>
   </div>
 
   <div class="controls">
     <button class="btn primary" id="endTurnBtn">決定（実行）</button>
+    <button class="btn gold" id="shootBtn" disabled>シュート</button>
+    <button class="btn ghost" id="cancelSelBtn">選択解除</button>
   </div>
   <div class="controls" style="margin-top:8px">
     <button class="btn ghost" id="resetBtn">配置リセット</button>
@@ -866,6 +867,14 @@ function render(){
         img.src=IMG[p.posType+'_'+p.team];
         pe.appendChild(img);
         pe.addEventListener('click',ev=>{ev.stopPropagation();onPieceClick(p,c.x,c.y);});
+        // 保持駒の上にタップ可能なボール（Unity版：駒とボールは別のタップ対象）
+        if(hasBall && p.team==='b' && state.phase==='input'){
+          const bt=document.createElement('button');
+          bt.className='balltap'+(isSel&&state.mode==='pass'?' active':'');
+          bt.title='ボール（タップでパス/シュート）';
+          bt.addEventListener('click',ev=>{ev.stopPropagation();onBallClick(p);});
+          pe.appendChild(bt);
+        }
         pc.appendChild(pe);
       });
       el.appendChild(pc);
@@ -906,58 +915,14 @@ function render(){
   }
   const hint=document.getElementById('modeHint');
   if(state.phase==='replay')hint.textContent='▶ リプレイ再生中…';
-  else if(state.mode==='menu')hint.textContent='メニューから行動を選んでください（駒の周りのボタン）';
-  else if(state.mode==='move')hint.textContent='移動モード：黄色いマスへ移動を予約';
-  else if(state.mode==='pass')hint.textContent='パスでつなぐ／「ここで保持」でボール回しを終了';
-  else hint.textContent=`仕込み中（予約 ${myCommands.length}件）：駒を選んで行動を予約 → 実行ボタン`;
-  renderRadial();
+  else if(state.mode==='move')hint.textContent='移動モード：黄色いマスへ移動を予約（ボール保持駒はドリブル）';
+  else if(state.mode==='pass')hint.textContent='パスモード：青い丸/味方へパス、またはシュートボタン';
+  else hint.textContent=`仕込み中（予約 ${myCommands.length}件）：駒タップ=移動 / ボールタップ=パス・シュート → 決定`;
+  // シュートボタンは「ボール選択中(パスモード)」で有効（Unity OnSelectBall→Shoot有効化）
+  const sb=document.getElementById('shootBtn');
+  if(sb){ const h=chainHolder(); sb.disabled = !(state.phase==='input' && state.mode==='pass' && h && h.team==='b'); }
 }
 
-/* ===== 放射状メニュー（Unity版風：駒中心に行動ボタンを散らす）===== */
-function renderRadial(){
-  const menu=document.getElementById('radialMenu');
-  if(!menu) return;
-  menu.innerHTML='';
-  const sel=state.selected;
-  if(!(state.phase==='input' && sel && sel.team==='b' && state.mode==='menu')){ menu.style.display='none'; return; }
-  if(COLS.indexOf(sel.x)<0||ROWS.indexOf(sel.y)<0){ menu.style.display='none'; return; }
-  const ctr=cellCenter(sel.x,sel.y);
-  menu.style.left=(boardEl.offsetLeft + boardEl.offsetWidth *(ctr.cx/100))+'px';
-  menu.style.top =(boardEl.offsetTop  + boardEl.offsetHeight*(ctr.cy/100))+'px';
-  menu.style.display='block';
-  // 構成：保持駒は ドリブル/パス/シュート、それ以外は 移動。下は 保持 or キャンセル。
-  const holder=chainHolder();
-  const isHolder = holder && holder.id===sel.id;
-  const alreadyMoved = chainMovedIds.has(sel.id);
-  const chainOn = (chainPassCount>0 || alreadyMoved);
-  const btns=[];
-  if(isHolder){
-    if(!alreadyMoved) btns.push({pos:'top',   act:'move',  label:'ドリブル'});
-    btns.push({pos:'right', act:'pass',  label:'パス'});
-    btns.push({pos:'left',  act:'shoot', label:'シュート'});
-    btns.push({pos:'bottom',act:chainOn?'hold':'cancel', label:chainOn?'保持':'キャンセル'});
-  }else if(!alreadyMoved){
-    btns.push({pos:'top',   act:'move',  label:'移動'});
-    btns.push({pos:'bottom',act:'cancel',label:'キャンセル'});
-  }else{
-    btns.push({pos:'bottom',act:'cancel',label:'キャンセル'});
-  }
-  btns.forEach(b=>{
-    const el=document.createElement('button');
-    el.className=`radialBtn r-${b.pos} act-${b.act}`;
-    el.textContent=b.label;
-    el.addEventListener('click',ev=>{ ev.stopPropagation(); radialAction(b.act); });
-    menu.appendChild(el);
-  });
-}
-function radialAction(act){
-  const sel=state.selected; if(!sel) return;
-  if(act==='move'){ state.mode='move'; render(); }
-  else if(act==='pass'){ state.mode='pass'; render(); }
-  else if(act==='shoot'){ const h=chainHolder(); if(h&&h.team==='b'){ tryShoot(h); } else { log('ボール保持駒がいません'); } }
-  else if(act==='hold'){ clearSelection(); log('ボールを保持（ボール回し終了）'); render(); }
-  else { clearSelection(); render(); } // cancel
-}
 
 /* ===== Unity版 PieceMoveLimitDef を移植 =====
    上下左右1マス。コスト3のみ斜め1マスも可。
@@ -1018,14 +983,29 @@ function onPieceClick(p,cx,cy){
   // 同じ駒を再タップ＝選択解除
   if(state.selected&&state.selected.id===p.id){ clearSelection(); render(); return; }
 
-  // 駒を選択 → 放射状メニューを開く（Unity版の操作感）
+  // 駒を選択 → そのまま移動モード（Unity版：駒タップ＝移動。ボール保持駒はドリブル）
   state.selected=p;
   state.expanded={x:p.x,y:p.y};
-  state.mode='menu';
   const holder = state.phase==='input' ? chainHolder() : ballHolder();
-  if(holder && holder.id===p.id) log(`${label(p)}（ボール保持）を選択：メニューから行動を選択`);
-  else if(chainMovedIds.has(p.id)) log(`${label(p)} は移動済み（パスは受けられます）`);
-  else log(`${label(p)} を選択：メニューから行動を選択`);
+  const isHolder = holder && holder.id===p.id;
+  if(chainMovedIds.has(p.id)){
+    state.mode='idle';
+    log(`${label(p)} はこのターン移動済み`+(isHolder?'（ボールをタップでパス/シュート）':''));
+  }else{
+    state.mode='move';
+    log(isHolder?`${label(p)}（ボール保持）：黄マスへドリブル／ボールをタップでパス・シュート`
+               :`${label(p)} を選択：黄色いマスへ移動`);
+  }
+  render();
+}
+/* ボールをタップ＝パス/キックモード（Unity OnSelectBall：駒とは別対象）。
+   ボール保持駒は CanBallKick=hasBall なので、移動済みでも蹴れる。 */
+function onBallClick(p){
+  if(state.phase!=='input') return;
+  const holder=chainHolder();
+  if(!holder || holder.id!==p.id || p.team!=='b') return;
+  state.selected=p; state.expanded={x:p.x,y:p.y}; state.mode='pass';
+  log(`${label(p)} のボールを選択：パス先（青い丸/味方）をタップ、またはシュートボタン`);
   render();
 }
 function updateActionBar(){
@@ -1042,11 +1022,6 @@ function onCellClick(x,y){
     return;
   }
   const p=state.selected;
-  // メニュー表示中に盤外（対象外マス）をタップ＝メニューを閉じる
-  if(state.mode==='menu'){
-    if(!(state.expanded&&state.expanded.x===x&&state.expanded.y===y)){ clearSelection(); render(); }
-    return;
-  }
   // モードに厳密に従う
   if(state.mode==='pass'){
     if(isPassable(p,x,y)){ doPassToCell(p,x,y); return; }
@@ -1109,13 +1084,11 @@ function continueChainFrom(to){
   if(!canChain && enemyOnCell && chainMovedIds.has(to.id)===false){
     log(`→ ${label(to)} は敵マスで受けたため、ここで連鎖終了（保持）`);
   }
-  if(canChain){
-    state.selected=to; state.mode='menu'; state.expanded={x:to.x,y:to.y};
-    updateActionBar(); render();
-    log(`→ ${label(to)} がボールを受けました。続けてパスで味方へつなげます（または実行）`);
-  }else{
-    clearSelection(); render();
-  }
+  // Unity版：パス後は自動でモードに入らない。続けて蹴るなら受け手のボールをタップ。
+  clearSelection();
+  if(canChain) log(`→ ${label(to)} がボールを受けました。続けて蹴るなら受け手のボールをタップ`);
+  else log(`→ ${label(to)} がボールを受けました（敵マスのためここで保持）`);
+  render();
 }
 function tryShoot(p){
   const r=calcShoot(p);
@@ -1132,22 +1105,13 @@ function buildKickoffAfterGoal(){ const ko=pieces.find(p=>p.team==='b'&&p.posTyp
 
 function log(m){const l=document.getElementById('log');l.innerHTML=`<div>${m}</div>`+l.innerHTML;}
 
-document.getElementById('passModeBtn').addEventListener('click',()=>{
-  if(!state.selected)return; state.mode='pass'; log('パスモード：青い丸のマスをタップ'); updateActionBar(); render();
-});
-document.getElementById('dribbleModeBtn').addEventListener('click',()=>{
-  if(!state.selected)return; state.mode='move'; log('ドリブル/移動モード：黄色いマスをタップ'); updateActionBar(); render();
-});
-document.getElementById('shootInlineBtn').addEventListener('click',()=>{
-  const holder = state.phase==='input' ? chainHolder() : ballHolder();
-  if(holder&&holder.team==='b') tryShoot(holder); else log('自分のボール保持駒がいません');
-});
-document.getElementById('holdBtn').addEventListener('click',()=>{
-  // ボール回しを終了。ボールは現在の保持駒が持ったまま、選択だけ解除して他の駒の仕込みへ
+document.getElementById('shootBtn').addEventListener('click',()=>{
+  if(state.phase!=='input'){ return; }
   const holder=chainHolder();
-  if(holder) log(`ボール回し終了：${label(holder)} がボールを保持したまま確定`);
-  clearSelection(); render();
+  if(holder && holder.team==='b'){ tryShoot(holder); }
+  else log('ボールを持つ自分の駒がいません');
 });
+document.getElementById('cancelSelBtn').addEventListener('click',()=>{ clearSelection(); render(); });
 document.getElementById('resetBtn').addEventListener('click',()=>{buildTeams();myCommands=[];oppCommands=[];state={turn:1,half:'前半',addedTime:(Math.random()<0.5?0:1),scoreSelf:0,scoreOpp:0,selected:null,mode:'idle',expanded:null,phase:'input'};log('配置をリセットしました');render();});
 document.getElementById('tackleDemoBtn').addEventListener('click',()=>{
   const holder=ballHolder();
