@@ -602,6 +602,18 @@ function ballPos(){
 }
 function pieceById(id){return pieces.find(p=>p.id===id);}
 function ballHolder(){return ball.target==='piece'?pieceById(ball.pieceId):null;}
+/* --- フリーボール（こぼれ球）の所有者決定 ---
+   ボールがマスに転がっている場合、そのマスにいる駒が確保。
+   複数いる場合はコストの高い方が拾う（Unity/GDD準拠）。誰もいなければ転がったまま。 */
+function resolveFreeBall(){
+  if(ball.target!=='cell') return;
+  const here=piecesAt(ball.x,ball.y);
+  if(here.length===0) return;
+  here.sort((a,b)=> pieceCost(b)-pieceCost(a)); // コスト降順
+  const owner=here[0];
+  ball={target:'piece',pieceId:owner.id,x:null,y:null};
+  log(`こぼれ球を ${owner.team==='b'?'青':'赤'}${owner.posType.toUpperCase()}(コスト${pieceCost(owner)}) が確保`);
+}
 
 /* ===== 相手AI（赤）：Unity版 StmBattleRandomAICommandCalculate を移植 =====
    各駒ごとに 止まる/移動/パス/スルーパス/シュート を抽選して実行。
@@ -1061,6 +1073,10 @@ async function resolveSimultaneousTurn(){
     await execCommand(cmd);
     render();
   }
+
+  // こぼれ球の所有者決定（そのマスにいる最高コストの駒が確保）
+  resolveFreeBall();
+  render();
 
   // ターン後処理
   await showCutin('start_turn',500); // 区切り
