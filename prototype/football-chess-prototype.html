@@ -127,6 +127,24 @@
     border-radius:6px; box-shadow:0 0 6px #ffe14d; pointer-events:none;}
   .piece.hasball::after{pointer-events:none;}
   .piece.expanded{width:44%; z-index:6;}
+  .piece.psel{width:54%; z-index:8;}          /* 選択駒を拡大（Unity風ズーム）*/
+  /* 放射状メニュー：駒中心に配置し、上下左右へボタンを散らす */
+  .radialMenu{position:absolute; width:0; height:0; z-index:9; pointer-events:none;}
+  .radialBtn{position:absolute; pointer-events:auto; transform:translate(-50%,-50%);
+    font-size:11px; font-weight:800; color:#fff; border:none; cursor:pointer;
+    padding:5px 10px; border-radius:14px; white-space:nowrap; letter-spacing:.02em;
+    background:rgba(22,28,34,.94); box-shadow:0 2px 5px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.35);
+    animation:radPop .14s ease-out;}
+  .radialBtn:active{transform:translate(-50%,-50%) scale(.93);}
+  .radialBtn.r-top{ top:-36px; left:0; }
+  .radialBtn.r-bottom{ top:36px; left:0; }
+  .radialBtn.r-left{ top:0; left:-50px; }
+  .radialBtn.r-right{ top:0; left:50px; }
+  .radialBtn.act-pass{ background:rgba(24,96,160,.96); }
+  .radialBtn.act-shoot{ background:rgba(160,118,22,.96); }
+  .radialBtn.act-cancel{ background:rgba(96,44,44,.94); }
+  .radialBtn.act-hold{ background:rgba(40,120,70,.96); }
+  @keyframes radPop{0%{opacity:0; transform:translate(-50%,-50%) scale(.5);}100%{opacity:1;}}
   .cell.stack{cursor:pointer;}
   .cell .stackbadge{position:absolute; right:2px; top:2px; z-index:7; pointer-events:none;
     background:#ffcf3f; color:#222; font-size:9px; font-weight:800;
@@ -212,6 +230,7 @@
   <div class="boardWrap">
     <div class="board" id="board"></div>
     <div class="fxLayer" id="fxLayer"></div>
+    <div class="radialMenu" id="radialMenu" style="display:none"></div>
   </div>
 
   <div id="actionBar" style="display:none; gap:8px; margin-top:8px;">
@@ -871,9 +890,58 @@ function render(){
   }
   const hint=document.getElementById('modeHint');
   if(state.phase==='replay')hint.textContent='▶ リプレイ再生中…';
+  else if(state.mode==='menu')hint.textContent='メニューから行動を選んでください（駒の周りのボタン）';
   else if(state.mode==='move')hint.textContent='移動モード：黄色いマスへ移動を予約';
   else if(state.mode==='pass')hint.textContent='パスでつなぐ／「ここで保持」でボール回しを終了';
   else hint.textContent=`仕込み中（予約 ${myCommands.length}件）：駒を選んで行動を予約 → 実行ボタン`;
+  renderRadial();
+}
+
+/* ===== 放射状メニュー（Unity版風：駒中心に行動ボタンを散らす）===== */
+function renderRadial(){
+  const menu=document.getElementById('radialMenu');
+  if(!menu) return;
+  menu.innerHTML='';
+  const sel=state.selected;
+  if(!(state.phase==='input' && sel && sel.team==='b' && state.mode==='menu')){ menu.style.display='none'; return; }
+  const ci=COLS.indexOf(sel.x), ri=ROWS.indexOf(sel.y);
+  if(ci<0||ri<0){ menu.style.display='none'; return; }
+  const cw=100/COLS.length, ch=100/ROWS.length;
+  menu.style.left=(boardEl.offsetLeft + boardEl.offsetWidth *((ci*cw+cw/2)/100))+'px';
+  menu.style.top =(boardEl.offsetTop  + boardEl.offsetHeight*((ri*ch+ch/2)/100))+'px';
+  menu.style.display='block';
+  // 構成：保持駒は ドリブル/パス/シュート、それ以外は 移動。下は 保持 or キャンセル。
+  const holder=chainHolder();
+  const isHolder = holder && holder.id===sel.id;
+  const alreadyMoved = chainMovedIds.has(sel.id);
+  const chainOn = (chainPassCount>0 || alreadyMoved);
+  const btns=[];
+  if(isHolder){
+    if(!alreadyMoved) btns.push({pos:'top',   act:'move',  label:'ドリブル'});
+    btns.push({pos:'right', act:'pass',  label:'パス'});
+    btns.push({pos:'left',  act:'shoot', label:'シュート'});
+    btns.push({pos:'bottom',act:chainOn?'hold':'cancel', label:chainOn?'保持':'キャンセル'});
+  }else if(!alreadyMoved){
+    btns.push({pos:'top',   act:'move',  label:'移動'});
+    btns.push({pos:'bottom',act:'cancel',label:'キャンセル'});
+  }else{
+    btns.push({pos:'bottom',act:'cancel',label:'キャンセル'});
+  }
+  btns.forEach(b=>{
+    const el=document.createElement('button');
+    el.className=`radialBtn r-${b.pos} act-${b.act}`;
+    el.textContent=b.label;
+    el.addEventListener('click',ev=>{ ev.stopPropagation(); radialAction(b.act); });
+    menu.appendChild(el);
+  });
+}
+function radialAction(act){
+  const sel=state.selected; if(!sel) return;
+  if(act==='move'){ state.mode='move'; render(); }
+  else if(act==='pass'){ state.mode='pass'; render(); }
+  else if(act==='shoot'){ const h=chainHolder(); if(h&&h.team==='b'){ tryShoot(h); } else { log('ボール保持駒がいません'); } }
+  else if(act==='hold'){ clearSelection(); log('ボールを保持（ボール回し終了）'); render(); }
+  else { clearSelection(); render(); } // cancel
 }
 
 /* ===== Unity版 PieceMoveLimitDef を移植 =====
@@ -935,40 +1003,19 @@ function onPieceClick(p,cx,cy){
   // 同じ駒を再タップ＝選択解除
   if(state.selected&&state.selected.id===p.id){ clearSelection(); render(); return; }
 
-  // 駒を選択
+  // 駒を選択 → 放射状メニューを開く（Unity版の操作感）
   state.selected=p;
   state.expanded={x:p.x,y:p.y};
+  state.mode='menu';
   const holder = state.phase==='input' ? chainHolder() : ballHolder();
-  const isHolder = holder && holder.id===p.id;
-  // 既に移動を仕込んだ駒はもう移動できない（パスは受けられる）
-  const alreadyMoved = chainMovedIds.has(p.id);
-  if(isHolder){
-    state.mode='pass';
-    log(`${label(p)}（ボール保持）を選択。パスで味方へつなぐ／ドリブルで運ぶ`);
-  }else if(alreadyMoved){
-    state.mode='idle';
-    log(`${label(p)} はこのターン移動を仕込み済みです`);
-  }else{
-    state.mode='move';
-    log(`${label(p)} を選択：黄色いマスへ移動を予約`);
-  }
-  updateActionBar();
+  if(holder && holder.id===p.id) log(`${label(p)}（ボール保持）を選択：メニューから行動を選択`);
+  else if(chainMovedIds.has(p.id)) log(`${label(p)} は移動済み（パスは受けられます）`);
+  else log(`${label(p)} を選択：メニューから行動を選択`);
   render();
 }
 function updateActionBar(){
-  const bar=document.getElementById('actionBar');
-  const holder = state.phase==='input' ? chainHolder() : ballHolder();
-  const sel=state.selected;
-  if(sel && holder && holder.id===sel.id && sel.team==='b'){
-    bar.style.display='flex';
-    document.getElementById('passModeBtn').classList.toggle('active',state.mode==='pass');
-    document.getElementById('dribbleModeBtn').classList.toggle('active',state.mode==='move');
-    // 「ここで保持」はボール回しが始まっている時だけ表示（最初の保持駒では不要）
-    const holdBtn=document.getElementById('holdBtn');
-    holdBtn.style.display = (chainPassCount>0 || chainMovedIds.has(sel.id)) ? 'inline-block' : 'none';
-  }else{
-    bar.style.display='none';
-  }
+  // 旧・画面下部の固定バーは廃止（放射状メニューに置き換え）。常に非表示。
+  const bar=document.getElementById('actionBar'); if(bar) bar.style.display='none';
 }
 function label(p){ return p.posType.toUpperCase()+'('+p.cost+')'; }
 function clearSelection(){ state.selected=null; state.mode='idle'; state.expanded=null;
@@ -980,6 +1027,11 @@ function onCellClick(x,y){
     return;
   }
   const p=state.selected;
+  // メニュー表示中に盤外（対象外マス）をタップ＝メニューを閉じる
+  if(state.mode==='menu'){
+    if(!(state.expanded&&state.expanded.x===x&&state.expanded.y===y)){ clearSelection(); render(); }
+    return;
+  }
   // モードに厳密に従う
   if(state.mode==='pass'){
     if(isPassable(p,x,y)){ doPassToCell(p,x,y); return; }
@@ -1043,7 +1095,7 @@ function continueChainFrom(to){
     log(`→ ${label(to)} は敵マスで受けたため、ここで連鎖終了（保持）`);
   }
   if(canChain){
-    state.selected=to; state.mode='pass'; state.expanded={x:to.x,y:to.y};
+    state.selected=to; state.mode='menu'; state.expanded={x:to.x,y:to.y};
     updateActionBar(); render();
     log(`→ ${label(to)} がボールを受けました。続けてパスで味方へつなげます（または実行）`);
   }else{
