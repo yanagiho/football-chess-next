@@ -506,6 +506,34 @@ function calcShoot(attackPiece){
 function pieceCost(p){ return p.cost||1; }
 function rollPercent(p){ return Math.random()*100 < p; }
 
+/* --- ゴール方向の1マス前のマス（遮蔽判定用）--- */
+function goalFrontCell(p){
+  const dir=(p.team==='b')?-1:+1;   // 青は敵ゴール(y=-3)方向、赤は自ゴール(y=4)方向
+  const ny=p.y+dir;
+  if(ny<=-3||ny>=4) return null;    // ゴールラインの外は対象外
+  return {x:p.x, y:ny};
+}
+/* --- シュート解決：DFブロック → GKセーブ の二段判定（GDD/おまかせ仕様）---
+   1) ゴール前を敵が遮蔽していたら必ずブロック
+   2) 同マスの敵DFによるブロック抽選
+   3) 抜けたら prob（=得点率）でゴール、外れたらGKセーブ */
+function resolveShoot(p, prob){
+  const enemies=piecesAt(p.x,p.y).filter(q=>q.team!==p.team);
+  const front=goalFrontCell(p);
+  if(front && piecesAt(front.x,front.y).some(q=>q.team!==p.team)){
+    return {result:'block', reason:'ゴール前を敵が遮蔽'};
+  }
+  const enemyDF=enemies.filter(q=>q.posType==='df').length;
+  const blockP=clampProb(enemyDF*30);
+  if(blockP>0 && rollPercent(blockP)){
+    return {result:'block', reason:`敵DFがブロック（${blockP}%）`};
+  }
+  if(rollPercent(prob)) return {result:'goal'};
+  return {result:'save'};
+}
+const PK_FIXED=75; // PK固定成功率（GDD簡易）
+const FK_FIXED=50; // FK固定成功率（GDD簡易）
+
 /* --- PK/FK/CK 成功率 --- */
 function calcPK(att,gk){ return clampProb(T_PK[costToIndex(pieceCost(att))][costToIndex(pieceCost(gk))]); }
 function calcFK(att,gk){ return clampProb(T_FK[costToIndex(pieceCost(att))][costToIndex(pieceCost(gk))]); }
@@ -540,13 +568,13 @@ function resolveTackle(hasBallPiece, tackler){
     // ペナルティエリア内ならPK、外ならFK
     const inPA=(c.t==='oppga'||c.t==='pa'&&hasBallPiece.y<0);
     if(inPA){
-      const pkP=calcPK(hasBallPiece,gk||hasBallPiece);
+      const pkP=PK_FIXED;
       if(rollPercent(pkP)){ out.push(`PK成功（${pkP}%）→ ゴール！`); return {goal:true,log:out}; }
       out.push(`PK失敗（${pkP}%）`);
       const ckP=failedToCK('PK',gkCost);
       if(rollPercent(ckP)){ out.push(`こぼれ球→CK（${ckP}%）`); }
     }else{
-      const fkP=calcFK(hasBallPiece,gk||hasBallPiece);
+      const fkP=FK_FIXED;
       if(rollPercent(fkP)){ out.push(`FK成功（${fkP}%）→ ゴール！`); return {goal:true,log:out}; }
       out.push(`FK失敗（${fkP}%）`);
       const ckP=failedToCK('FK',gkCost);
@@ -1117,11 +1145,22 @@ async function execCommand(cmd){
     if(p.team==='b'){ const r=calcShoot(p); prob=r.prob; area=r.area; }
     else { const gk=pieces.find(q=>q.team==='b'&&q.posType==='gk'); const gkCost=gk?pieceCost(gk):1; const c=cellAt(p.x,p.y);
       prob=100; if(c.t==='selfga'||(c.t==='pa'&&p.y>0)){prob=clampProb(T_PA_SHOOT[costToIndex(gkCost)][costToIndex(pieceCost(p))]);area='PA';} else if(c.t==='va'&&p.y>0){prob=clampProb(T_VA_SHOOT[costToIndex(gkCost)][costToIndex(pieceCost(p))]);area='VA';} }
-    const ok=rollPercent(prob);
     await showCutin('shoot',850);
-    log(`${p.team==='b'?'青':'赤'}シュート（${area} ${prob}%）${ok?'ゴール！':'セーブ'}`);
-    if(ok){ await scoreGoal(p.team); }
-    else { await showCutin('saving',900); ball={target:'cell',pieceId:null,x:p.x,y:p.y}; }
+    const res=resolveShoot(p, prob);
+    if(res.result==='goal'){
+      log(`${p.team==='b'?'青':'赤'}シュート（${area} ${prob}%）→ ゴール！`);
+      await scoreGoal(p.team);
+    }else if(res.result==='block'){
+      log(`${p.team==='b'?'青':'赤'}シュート → ${res.reason}（ブロック）`);
+      await showCutin('shootStop',900);
+      ball={target:'cell',pieceId:null,x:p.x,y:p.y}; // こぼれ球（所有者は後段で決定）
+    }else{ // セーブ：GKが必ずキャッチ
+      log(`${p.team==='b'?'青':'赤'}シュート（${area} ${prob}%）→ GKセーブ・キャッチ`);
+      await showCutin('saving',900);
+      const sgk=pieces.find(q=>q.team!==p.team && q.posType==='gk');
+      if(sgk){ ball={target:'piece',pieceId:sgk.id,x:null,y:null}; }
+      else { ball={target:'cell',pieceId:null,x:p.x,y:p.y}; }
+    }
     render();
   }
 }
