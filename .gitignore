@@ -9,3 +9,6 @@ dist/
 *.local
 coverage/
 
+# ビルド時に prototype/ から自動生成される配信用コピー（元ファイルは prototype/ が正）
+public/play/
+

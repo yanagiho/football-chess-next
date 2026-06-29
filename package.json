@@ -4,8 +4,12 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
+    "sync:prototype": "node scripts/sync-prototype.mjs",
+    "predev": "node scripts/sync-prototype.mjs",
     "dev": "vite",
+    "prebuild": "node scripts/sync-prototype.mjs",
     "build": "vite build",
+    "prepreview": "node scripts/sync-prototype.mjs",
     "preview": "vite preview",
     "test": "vitest run",
     "cf:dev": "wrangler dev",
