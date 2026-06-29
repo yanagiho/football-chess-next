@@ -961,7 +961,15 @@ function doPassToCell(from,x,y){
    Unity条件：パス先に敵がいない or まだ一度もパスしていない場合に連鎖可。
    ここでは受け手がそのターンに移動を仕込んでいなければパスを続けられる。 */
 function continueChainFrom(to){
-  const canChain = !chainMovedIds.has(to.id); // 移動済みでなければパス可（CanBallKick=hasBall）
+  // Unity条件の厳密化：連鎖継続は
+  //   ①受け手がこのターン移動を仕込んでいない（CanBallKick）かつ
+  //   ②「受け手のマスに敵がいない」or「まだ最初のパスだけ（chainPassCount<=1）」
+  // を満たす場合のみ。敵マスで受けた2本目以降は連鎖を打ち切る。
+  const enemyOnCell = piecesAt(to.x,to.y).some(q=>q.team!==to.team);
+  const canChain = !chainMovedIds.has(to.id) && (!enemyOnCell || chainPassCount<=1);
+  if(!canChain && enemyOnCell && chainMovedIds.has(to.id)===false){
+    log(`→ ${label(to)} は敵マスで受けたため、ここで連鎖終了（保持）`);
+  }
   if(canChain){
     state.selected=to; state.mode='pass'; state.expanded={x:to.x,y:to.y};
     updateActionBar(); render();
