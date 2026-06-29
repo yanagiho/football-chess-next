@@ -42,7 +42,11 @@ Web/PWA + Cloudflare へ移植するプロジェクト。開発依頼者は**非
 - オフサイド: 相手守備の後ろから2番目をライン、前方パスをライン前で受けたら確率判定→位置戻し＋守備側ボール
 - 操作(Unity版準拠): **駒とボールは別タップ対象**。駒タップ＝移動モード(ボール保持駒はドリブル)、
   ボール(保持駒の上の光るボール)タップ＝パス/キックモード＋シュートHUDボタン有効。シュート/決定/選択解除はHUDボタン。
-  選択駒は拡大、重なりマスは散らして個別選択。出典: Unity `LocalUserController` / `StmBattleUserControllerSelectEvent`(OnSelectPiece=移動, OnSelectBall=パス/シュート)
+  重なりマスは散らして個別選択。出典: Unity `LocalUserController` / `StmBattleUserControllerSelectEvent`(OnSelectPiece=移動, OnSelectBall=パス/シュート)
+- 選択時の拡大(Unity準拠): ボール選択(パス)／ドリブル選択時は保持駒(`.selbig`)とボール(`.balltap.big`)を拡大表示。
+  根拠は Unity `PieceDef.Size`(単体選択=base×2.5) / `BallDef.Size`(×2.3)。
+- 予約操作の可視化: 仕込み中は `renderPlan()` が移動/ドリブルの行き先に残像(ゴースト駒)＋経路点線、
+  パス/スルーパス/シュートは経路点線を表示（駒は決定後のリプレイまで実際には動かないため）。
 
 ### 盤目キャリブレーション（重要）
 `prototype/` 内の `FIELD={L:4.5,R:95.3,T:5.3,B:92.0}` と `cellRect()/cellCenter()` が、
