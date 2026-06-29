@@ -96,7 +96,7 @@
     18%{opacity:1; transform:translate(-50%,-120%) scale(1.06);}
     78%{opacity:1; transform:translate(-50%,-130%) scale(1);}
     100%{opacity:0; transform:translate(-50%,-165%) scale(1);}}
-  .board{position:relative; width:100%; aspect-ratio:5 / 7;
+  .board{position:relative; width:100%; aspect-ratio:705 / 1143;
     background-image:var(--fieldImg);
     background-size:100% 100%; background-repeat:no-repeat; background-position:center;
     border-radius:6px; overflow:hidden; touch-action:none;
@@ -615,18 +615,17 @@ async function checkOffsideOnReceive(passer, receiver){
 function flashOnPiece(piece, text){
   const layer=document.getElementById('fxLayer');
   if(!layer||!boardEl) return;
-  const ci=COLS.indexOf(piece.x), ri=ROWS.indexOf(piece.y);
-  if(ci<0||ri<0) return;
+  if(COLS.indexOf(piece.x)<0||ROWS.indexOf(piece.y)<0) return;
   layer.style.left=boardEl.offsetLeft+'px';
   layer.style.top=boardEl.offsetTop+'px';
   layer.style.width=boardEl.offsetWidth+'px';
   layer.style.height=boardEl.offsetHeight+'px';
-  const cw=100/COLS.length, ch=100/ROWS.length;
+  const ctr=cellCenter(piece.x,piece.y);
   const fx=document.createElement('div');
   fx.className='fxBadge';
   fx.textContent=text;
-  fx.style.left=(ci*cw+cw/2)+'%';
-  fx.style.top=(ri*ch)+'%';
+  fx.style.left=ctr.cx+'%';
+  fx.style.top=cellRect(piece.x,piece.y).top+'%';
   layer.appendChild(fx);
   setTimeout(()=>{ fx.remove(); }, 1100);
 }
@@ -803,6 +802,22 @@ const boardEl=document.getElementById('board');
 function cellAt(x,y){return BOARD.find(c=>c.x===x&&c.y===y);}
 function piecesAt(x,y){return pieces.filter(p=>p.x===x&&p.y===y);}
 
+/* ===== 盤目キャリブレーション：フィールド画像の白ライン実測に合わせてセルを配置 =====
+   タッチライン x:4.5%〜95.3%、ゴールライン y:5.3%〜92.0%。
+   競技エリアは 5列×6行(y=-2..3)で均等割り（ペナルティ/ハーフラインが境界に一致）。
+   y=-3/4 はゴール（枠の外）。すべての座標→画面%変換をここに集約する。 */
+const FIELD={L:4.5, R:95.3, T:5.3, B:92.0};
+function cellRect(x,y){
+  const colW=(FIELD.R-FIELD.L)/5;
+  const left=FIELD.L+COLS.indexOf(x)*colW;
+  let top,height;
+  if(y===-3){ top=0; height=FIELD.T; }
+  else if(y===4){ top=FIELD.B; height=100-FIELD.B; }
+  else { const rowH=(FIELD.B-FIELD.T)/6; top=FIELD.T+(y+2)*rowH; height=rowH; }
+  return {left, top, width:colW, height};
+}
+function cellCenter(x,y){ const r=cellRect(x,y); return {cx:r.left+r.width/2, cy:r.top+r.height/2}; }
+
 function render(){
   boardEl.innerHTML='';
   const cw=100/COLS.length, ch=100/ROWS.length;
@@ -810,8 +825,9 @@ function render(){
     const ci=COLS.indexOf(c.x), ri=ROWS.indexOf(c.y);
     const el=document.createElement('div');
     el.className='cell '+c.t;
-    el.style.left=(ci*cw)+'%'; el.style.top=(ri*ch)+'%';
-    el.style.width=cw+'%'; el.style.height=ch+'%';
+    const rect=cellRect(c.x,c.y);
+    el.style.left=rect.left+'%'; el.style.top=rect.top+'%';
+    el.style.width=rect.width+'%'; el.style.height=rect.height+'%';
     if(c.label){const l=document.createElement('span');l.className='areaLabel';l.textContent=c.label;el.appendChild(l);}
     if(state.selected){
       if(state.mode==='move' && isMovable(state.selected,c.x,c.y)) el.classList.add('movable');
@@ -863,10 +879,10 @@ function render(){
   });
   // フリーボール（マスに単独で存在する状態）を描画
   if(ball.target==='cell'){
-    const ci=COLS.indexOf(ball.x), ri=ROWS.indexOf(ball.y);
+    const ctr=cellCenter(ball.x,ball.y);
     const b=document.createElement('div'); b.className='ballfree';
-    b.style.left=`calc(${(ci+0.5)*cw}% - 8px)`;
-    b.style.top=`calc(${(ri+0.5)*ch}% - 8px)`;
+    b.style.left=`calc(${ctr.cx}% - 8px)`;
+    b.style.top=`calc(${ctr.cy}% - 8px)`;
     boardEl.appendChild(b);
   }
   document.getElementById('scoreSelf').textContent=state.scoreSelf;
@@ -904,11 +920,10 @@ function renderRadial(){
   menu.innerHTML='';
   const sel=state.selected;
   if(!(state.phase==='input' && sel && sel.team==='b' && state.mode==='menu')){ menu.style.display='none'; return; }
-  const ci=COLS.indexOf(sel.x), ri=ROWS.indexOf(sel.y);
-  if(ci<0||ri<0){ menu.style.display='none'; return; }
-  const cw=100/COLS.length, ch=100/ROWS.length;
-  menu.style.left=(boardEl.offsetLeft + boardEl.offsetWidth *((ci*cw+cw/2)/100))+'px';
-  menu.style.top =(boardEl.offsetTop  + boardEl.offsetHeight*((ri*ch+ch/2)/100))+'px';
+  if(COLS.indexOf(sel.x)<0||ROWS.indexOf(sel.y)<0){ menu.style.display='none'; return; }
+  const ctr=cellCenter(sel.x,sel.y);
+  menu.style.left=(boardEl.offsetLeft + boardEl.offsetWidth *(ctr.cx/100))+'px';
+  menu.style.top =(boardEl.offsetTop  + boardEl.offsetHeight*(ctr.cy/100))+'px';
   menu.style.display='block';
   // 構成：保持駒は ドリブル/パス/シュート、それ以外は 移動。下は 保持 or キャンセル。
   const holder=chainHolder();
