@@ -135,6 +135,17 @@
     animation:ballPulse 1.4s ease-in-out infinite;}
   .balltap.active{border-color:#ffe14d; box-shadow:0 0 10px #ffe14d;}
   @keyframes ballPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.13);}}
+  /* 予約した操作の可視化：移動先の残像(ゴースト駒)＋経路の点線 */
+  .planLine{position:absolute; height:0; border-top:2px dashed rgba(255,225,77,.85);
+    transform-origin:0 0; pointer-events:none; z-index:3;}
+  .planLine.plan-pass,.planLine.plan-throughpass{border-top:2px dotted rgba(90,209,255,.95);}
+  .planLine.plan-shoot{border-top:3px dashed rgba(255,180,40,.97);}
+  .ghostPiece{position:absolute; width:6.5%; max-width:26px; transform:translate(-50%,-50%);
+    z-index:3; pointer-events:none; opacity:.5;}
+  .ghostPiece img{width:100%; display:block; filter:drop-shadow(0 0 2px rgba(255,225,77,.9));}
+  .ghostPiece::after{content:""; position:absolute; inset:-2px; border:1.5px dashed rgba(255,225,77,.85); border-radius:5px;}
+  .ghostPiece .gball{position:absolute; right:-5px; bottom:-5px; width:10px; height:10px; border-radius:50%;
+    background:#fff; box-shadow:0 0 5px rgba(255,255,255,.8);}
   /* 放射状メニュー：駒中心に配置し、上下左右へボタンを散らす */
   .radialMenu{position:absolute; width:0; height:0; z-index:9; pointer-events:none;}
   .radialBtn{position:absolute; pointer-events:auto; transform:translate(-50%,-50%);
@@ -819,6 +830,33 @@ function cellRect(x,y){
 }
 function cellCenter(x,y){ const r=cellRect(x,y); return {cx:r.left+r.width/2, cy:r.top+r.height/2}; }
 
+/* 予約した操作の可視化（仕込み中のみ）：移動/ドリブルは行き先に残像(ゴースト)＋経路点線、
+   パス/スルーパス/シュートは経路の点線を表示。「どう操作したか」を一目で分かるようにする。 */
+function renderPlan(){
+  if(state.phase!=='input' || !myCommands.length) return;
+  const W=boardEl.offsetWidth||300, H=boardEl.offsetHeight||486;
+  myCommands.forEach(cmd=>{
+    const p=pieceById(cmd.pieceId); if(!p) return;
+    const from=cellCenter(p.x,p.y);
+    const to=(cmd.type==='shoot') ? cellCenter(0, p.team==='b'?-3:4) : cellCenter(cmd.tx,cmd.ty);
+    // 経路の点線（divを回転）
+    const x1=from.cx/100*W, y1=from.cy/100*H, x2=to.cx/100*W, y2=to.cy/100*H;
+    const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy), ang=Math.atan2(dy,dx)*180/Math.PI;
+    const line=document.createElement('div'); line.className='planLine plan-'+cmd.type;
+    line.style.left=x1+'px'; line.style.top=y1+'px'; line.style.width=len+'px';
+    line.style.transform=`rotate(${ang}deg)`;
+    boardEl.appendChild(line);
+    // 移動/ドリブルは行き先に残像（ゴースト駒）
+    if(cmd.type==='move'||cmd.type==='dribble'){
+      const g=document.createElement('div'); g.className='ghostPiece';
+      g.style.left=to.cx+'%'; g.style.top=to.cy+'%';
+      const im=document.createElement('img'); im.src=IMG[p.posType+'_'+p.team]; g.appendChild(im);
+      if(cmd.type==='dribble'){ const gb=document.createElement('span'); gb.className='gball'; g.appendChild(gb); }
+      boardEl.appendChild(g);
+    }
+  });
+}
+
 function render(){
   boardEl.innerHTML='';
   const cw=100/COLS.length, ch=100/ROWS.length;
@@ -894,6 +932,7 @@ function render(){
     b.style.top=`calc(${ctr.cy}% - 8px)`;
     boardEl.appendChild(b);
   }
+  renderPlan(); // 予約した操作（移動先の残像・経路）を描画
   document.getElementById('scoreSelf').textContent=state.scoreSelf;
   document.getElementById('scoreOpp').textContent=state.scoreOpp;
   document.getElementById('turnInfo').textContent=`ターン ${state.turn}`;
