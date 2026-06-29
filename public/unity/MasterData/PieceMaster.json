@@ -1,0 +1,122 @@
+[
+	{
+		"mID": 1,
+		"mPieceBaseID": 1,
+		"mName": "FW_1",
+		"mCost": 1
+	},
+	{
+		"mID": 2,
+		"mPieceBaseID": 1,
+		"mName": "FW_1.5",
+		"mCost": 1.5
+	},
+	{
+		"mID": 3,
+		"mPieceBaseID": 1,
+		"mName": "FW_2",
+		"mCost": 2
+	},
+	{
+		"mID": 4,
+		"mPieceBaseID": 1,
+		"mName": "FW_2.5",
+		"mCost": 2.5
+	},
+	{
+		"mID": 5,
+		"mPieceBaseID": 1,
+		"mName": "FW_3",
+		"mCost": 3
+	},
+	{
+		"mID": 6,
+		"mPieceBaseID": 2,
+		"mName": "MF_1",
+		"mCost": 1
+	},
+	{
+		"mID": 7,
+		"mPieceBaseID": 2,
+		"mName": "MF_1.5",
+		"mCost": 1.5
+	},
+	{
+		"mID": 8,
+		"mPieceBaseID": 2,
+		"mName": "MF_2",
+		"mCost": 2
+	},
+	{
+		"mID": 9,
+		"mPieceBaseID": 2,
+		"mName": "MF_2.5",
+		"mCost": 2.5
+	},
+	{
+		"mID": 10,
+		"mPieceBaseID": 2,
+		"mName": "MF_3",
+		"mCost": 3
+	},
+	{
+		"mID": 11,
+		"mPieceBaseID": 3,
+		"mName": "DF_1",
+		"mCost": 1
+	},
+	{
+		"mID": 12,
+		"mPieceBaseID": 3,
+		"mName": "DF_1.5",
+		"mCost": 1.5
+	},
+	{
+		"mID": 13,
+		"mPieceBaseID": 3,
+		"mName": "DF_2",
+		"mCost": 2
+	},
+	{
+		"mID": 14,
+		"mPieceBaseID": 3,
+		"mName": "DF_2.5",
+		"mCost": 2.5
+	},
+	{
+		"mID": 15,
+		"mPieceBaseID": 3,
+		"mName": "DF_3",
+		"mCost": 3
+	},
+	{
+		"mID": 16,
+		"mPieceBaseID": 4,
+		"mName": "GK_1",
+		"mCost": 1
+	},
+	{
+		"mID": 17,
+		"mPieceBaseID": 4,
+		"mName": "GK_1.5",
+		"mCost": 1.5
+	},
+	{
+		"mID": 18,
+		"mPieceBaseID": 4,
+		"mName": "GK_2",
+		"mCost": 2
+	},
+	{
+		"mID": 19,
+		"mPieceBaseID": 4,
+		"mName": "GK_2.5",
+		"mCost": 2.5
+	},
+	{
+		"mID": 20,
+		"mPieceBaseID": 4,
+		"mName": "GK_3",
+		"mCost": 3
+	}
+]

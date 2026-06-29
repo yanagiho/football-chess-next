@@ -1,0 +1,22 @@
+[
+	{
+		"mID": 1,
+		"mUrl": "Static/Texture/fw",
+		"mMainPositionID": 0
+	},
+	{
+		"mID": 2,
+		"mUrl": "Static/Texture/mf",
+		"mMainPositionID": 1
+	},
+	{
+		"mID": 3,
+		"mUrl": "Static/Texture/df",
+		"mMainPositionID": 2
+	},
+	{
+		"mID": 4,
+		"mUrl": "Static/Texture/gk",
+		"mMainPositionID": 3
+	}
+]
