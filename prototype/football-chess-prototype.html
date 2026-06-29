@@ -134,7 +134,11 @@
     pointer-events:auto; cursor:pointer; z-index:9; box-shadow:0 0 7px rgba(255,255,255,.75);
     animation:ballPulse 1.4s ease-in-out infinite;}
   .balltap.active{border-color:#ffe14d; box-shadow:0 0 10px #ffe14d;}
+  .balltap.big{width:30px; height:30px; right:-11px; bottom:-11px; border-width:3px;}
   @keyframes ballPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.13);}}
+  /* ボール選択(パス)／ドリブル選択時：保持駒とボールを大きく表示（Unity: 単体×2.5 / ボール×2.3）*/
+  .piece.selbig{width:82%; z-index:10;}
+  .piece.selbig.hasball::after{width:17px; height:17px; right:-5px; bottom:-5px;}
   /* 予約した操作の可視化：移動先の残像(ゴースト駒)＋経路の点線 */
   .planLine{position:absolute; height:0; border-top:2px dashed rgba(255,225,77,.85);
     transform-origin:0 0; pointer-events:none; z-index:3;}
@@ -898,7 +902,9 @@ function render(){
           ? (chainHolderId===p.id)
           : (ball.target==='piece'&&ball.pieceId===p.id);
         const isSel=(state.selected&&state.selected.id===p.id);
-        pe.className='piece'+(hasBall?' hasball':'')+(isSel?' psel':'')+(isExpanded?' expanded':'')+(hasCommand(p.id)?' reserved':'');
+        // ボール選択(パス)／ドリブル選択(保持駒の移動)時は、駒とボールを大きく表示（Unity版準拠）
+        const isHolderSel = isSel && hasBall && state.phase==='input' && (state.mode==='pass'||state.mode==='move');
+        pe.className='piece'+(hasBall?' hasball':'')+(isSel?' psel':'')+(isHolderSel?' selbig':'')+(isExpanded?' expanded':'')+(hasCommand(p.id)?' reserved':'');
         const o=offs[i]||offs[offs.length-1];
         pe.style.left=o[0]+'%'; pe.style.top=o[1]+'%';
         const img=document.createElement('img');
@@ -908,7 +914,7 @@ function render(){
         // 保持駒の上にタップ可能なボール（Unity版：駒とボールは別のタップ対象）
         if(hasBall && p.team==='b' && state.phase==='input'){
           const bt=document.createElement('button');
-          bt.className='balltap'+(isSel&&state.mode==='pass'?' active':'');
+          bt.className='balltap'+(state.mode==='pass'&&isSel?' active':'')+(isHolderSel?' big':'');
           bt.title='ボール（タップでパス/シュート）';
           bt.addEventListener('click',ev=>{ev.stopPropagation();onBallClick(p);});
           pe.appendChild(bt);
