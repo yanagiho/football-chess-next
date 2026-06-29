@@ -85,7 +85,17 @@
   .score{font-size:22px; font-variant-numeric:tabular-nums; min-width:26px; text-align:center;}
   .turn{font-size:11px; color:#9fb0bd; text-align:center; margin-bottom:8px;}
 
-  .boardWrap{padding:4px 10px 8px;}
+  .boardWrap{padding:4px 10px 8px; position:relative;}
+  .fxLayer{position:absolute; pointer-events:none; z-index:8;}
+  .fxBadge{position:absolute; transform:translate(-50%,-120%); white-space:nowrap;
+    font-size:12px; font-weight:800; color:#fff; padding:2px 8px; border-radius:11px;
+    background:rgba(8,12,16,.78); border:1px solid rgba(255,255,255,.55);
+    text-shadow:0 0 4px #000; animation:fxPop 1100ms ease-out forwards;}
+  @keyframes fxPop{
+    0%{opacity:0; transform:translate(-50%,-90%) scale(.6);}
+    18%{opacity:1; transform:translate(-50%,-120%) scale(1.06);}
+    78%{opacity:1; transform:translate(-50%,-130%) scale(1);}
+    100%{opacity:0; transform:translate(-50%,-165%) scale(1);}}
   .board{position:relative; width:100%; aspect-ratio:5 / 7;
     background-image:var(--fieldImg);
     background-size:100% 100%; background-repeat:no-repeat; background-position:center;
@@ -201,6 +211,7 @@
   <!-- ===== フィールド ===== -->
   <div class="boardWrap">
     <div class="board" id="board"></div>
+    <div class="fxLayer" id="fxLayer"></div>
   </div>
 
   <div id="actionBar" style="display:none; gap:8px; margin-top:8px;">
@@ -552,6 +563,54 @@ function calcOffside(offsideLine, beforeY, afterY){
   const rb=relLine(offsideLine,beforeY), ra=relLine(offsideLine,afterY);
   return clampProb(T_OFFSIDE[rb][ra]);
 }
+/* --- ライブのオフサイド統合 ---
+   オフサイドライン＝相手守備の後ろから2番目のy。前方へのパスをラインより前で受けたら判定。 */
+function offsideLineFor(team){
+  const def=pieces.filter(p=>p.team!==team);
+  if(def.length===0) return null;
+  const sorted = team==='b' ? def.slice().sort((a,b)=>a.y-b.y)   // 青はy小さい方が前進
+                            : def.slice().sort((a,b)=>b.y-a.y);  // 赤はy大きい方が前進
+  return (sorted[1]||sorted[0]).y;
+}
+function isForwardY(team, fromY, toY){ return team==='b' ? toY<fromY : toY>fromY; }
+function isBeyondLine(team, y, line){ return team==='b' ? y<line : y>line; }
+/* パス成功時のオフサイド判定。成立したら位置戻し＋守備側ボールにして true を返す */
+async function checkOffsideOnReceive(passer, receiver){
+  const line=offsideLineFor(passer.team);
+  if(line==null) return false;
+  if(!isForwardY(passer.team, passer.y, receiver.y)) return false;   // 前方へのパスのみ
+  if(!isBeyondLine(passer.team, receiver.y, line)) return false;     // ラインより前で受けたときのみ
+  const op=calcOffside(line, passer.y, receiver.y);
+  if(!rollPercent(op)) return false;
+  await showCutin('offside',1100);
+  flashOnPiece(receiver,'OFFSIDE');
+  log(`オフサイド！ ${label(receiver)} は位置を戻し、守備側ボール（${op}%）`);
+  receiver.x = (receiver.sx!=null?receiver.sx:receiver.x);          // ターン開始位置へ戻す
+  receiver.y = (receiver.sy!=null?receiver.sy:receiver.y);
+  const dgk=pieces.find(q=>q.team!==passer.team && q.posType==='gk');
+  ball = dgk ? {target:'piece',pieceId:dgk.id,x:null,y:null}
+             : {target:'cell',pieceId:null,x:receiver.x,y:receiver.y};
+  return true;
+}
+/* --- 演出を駒の上に表示（render()で消えない fxLayer に重ねる）--- */
+function flashOnPiece(piece, text){
+  const layer=document.getElementById('fxLayer');
+  if(!layer||!boardEl) return;
+  const ci=COLS.indexOf(piece.x), ri=ROWS.indexOf(piece.y);
+  if(ci<0||ri<0) return;
+  layer.style.left=boardEl.offsetLeft+'px';
+  layer.style.top=boardEl.offsetTop+'px';
+  layer.style.width=boardEl.offsetWidth+'px';
+  layer.style.height=boardEl.offsetHeight+'px';
+  const cw=100/COLS.length, ch=100/ROWS.length;
+  const fx=document.createElement('div');
+  fx.className='fxBadge';
+  fx.textContent=text;
+  fx.style.left=(ci*cw+cw/2)+'%';
+  fx.style.top=(ri*ch)+'%';
+  layer.appendChild(fx);
+  setTimeout(()=>{ fx.remove(); }, 1100);
+}
 
 /* --- タックル一連の解決：Unity StateBattleCalculate を移植 ---
    tackler が hasBallPiece にタックル。戻り値はログ用の結果オブジェクト */
@@ -611,6 +670,19 @@ function resolveFreeBall(){
   if(here.length===0) return;
   here.sort((a,b)=> pieceCost(b)-pieceCost(a)); // コスト降順
   const owner=here[0];
+  // クリア処理：GK/DFが自陣でこぼれ球を確保したら前方へ蹴り出す
+  const ownHalf = owner.team==='b' ? owner.y>0 : owner.y<0;
+  if((owner.posType==='gk'||owner.posType==='df') && ownHalf){
+    const dir = owner.team==='b' ? -1 : +1;       // 前進方向
+    let ty = owner.y + dir*3;
+    if(ty<=-3) ty=-2; if(ty>=4) ty=3;             // ゴールマスは避ける
+    if(cellAt(0,ty)){
+      ball={target:'cell',pieceId:null,x:0,y:ty};
+      flashOnPiece(owner,'CLEAR');
+      log(`→ ${owner.team==='b'?'青':'赤'}${owner.posType.toUpperCase()} が前方へクリア（(0,${ty})へ）`);
+      return;
+    }
+  }
   ball={target:'piece',pieceId:owner.id,x:null,y:null};
   log(`こぼれ球を ${owner.team==='b'?'青':'赤'}${owner.posType.toUpperCase()}(コスト${pieceCost(owner)}) が確保`);
 }
@@ -1144,7 +1216,10 @@ async function execCommand(cmd){
     const prob=calcLandingPass(p,to,to.x,to.y);
     const ok=rollPercent(prob);
     log(`${p.team==='b'?'青':'赤'}パス ${p.posType.toUpperCase()}→${to.posType.toUpperCase()}（着地${prob}%）${ok?'成功':'失敗'}`);
-    if(ok){ ball={target:'piece',pieceId:to.id,x:null,y:null}; }
+    if(ok){
+      if(await checkOffsideOnReceive(p,to)){ render(); return; } // オフサイドなら位置戻し＋守備側ボール
+      ball={target:'piece',pieceId:to.id,x:null,y:null};
+    }
     else { await showCutin('passCut',950); ball={target:'cell',pieceId:null,x:to.x,y:to.y}; log('→ 着地マスでパスカット'); }
     render();
   }else if(cmd.type==='throughpass'){
@@ -1173,16 +1248,18 @@ async function execCommand(cmd){
     const res=resolveShoot(p, prob);
     if(res.result==='goal'){
       log(`${p.team==='b'?'青':'赤'}シュート（${area} ${prob}%）→ ゴール！`);
+      flashOnPiece(p,'GOAL!!');
       await scoreGoal(p.team);
     }else if(res.result==='block'){
       log(`${p.team==='b'?'青':'赤'}シュート → ${res.reason}（ブロック）`);
+      flashOnPiece(p,'BLOCK');
       await showCutin('shootStop',900);
       ball={target:'cell',pieceId:null,x:p.x,y:p.y}; // こぼれ球（所有者は後段で決定）
     }else{ // セーブ：GKが必ずキャッチ
       log(`${p.team==='b'?'青':'赤'}シュート（${area} ${prob}%）→ GKセーブ・キャッチ`);
       await showCutin('saving',900);
       const sgk=pieces.find(q=>q.team!==p.team && q.posType==='gk');
-      if(sgk){ ball={target:'piece',pieceId:sgk.id,x:null,y:null}; }
+      if(sgk){ ball={target:'piece',pieceId:sgk.id,x:null,y:null}; flashOnPiece(sgk,'SAVE'); }
       else { ball={target:'cell',pieceId:null,x:p.x,y:p.y}; }
     }
     render();
