@@ -107,6 +107,9 @@
   .selOpt img{width:80%; height:80%; object-fit:contain; display:block;
     filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));}
   .selOpt.ball{box-shadow:0 3px 10px rgba(0,0,0,.6), 0 0 0 2px rgba(255,225,77,.9) inset;}
+  .selOpt.shoot{background:radial-gradient(circle at 40% 35%, rgba(120,90,0,.96), rgba(60,40,0,.96));
+    box-shadow:0 3px 10px rgba(0,0,0,.6), 0 0 0 2px rgba(255,200,40,.95) inset;}
+  .selOpt.shoot span{color:#ffd24d; font-size:10px; font-weight:bold; text-shadow:0 1px 2px rgba(0,0,0,.8);}
   .selOpt.solo{width:58px; height:58px;} /* 単一項目はマス中央に大きく表示 */
   .selOpt:active{filter:brightness(1.2);}
   /* 保持駒のボールバッジ（駒アイコン右上） */
@@ -162,18 +165,23 @@
     border-radius:6px; box-shadow:0 0 6px #ffe14d; pointer-events:none;}
   .piece.hasball::after{pointer-events:none;}
   .piece.expanded{width:56%; max-width:48px; z-index:6;}
-  /* 移動先/パス先ゴースト（自分の予約コマンドの半透明プレビュー・仕込み中のみ） */
+  /* 移動先/パス先ゴースト（自分の予約コマンドの半透明プレビュー・仕込み中のみ）
+     既存駒（z-index:4）より手前に出し、点線の丸枠＋点滅で「そこに来る予定」だと重なっても分かるようにする。 */
   .ghost{position:absolute; width:36%; max-width:30px; transform:translate(-50%,-50%);
-    opacity:.35; z-index:3; pointer-events:none;}
-  .ghost img{width:100%; display:block; filter:drop-shadow(0 1px 1px rgba(0,0,0,.4));}
-  .ghost.ghostBall{width:20%; max-width:16px; opacity:.45;}
+    opacity:.55; z-index:5; pointer-events:none;
+    border-radius:50%; box-shadow:0 0 0 2px rgba(120,220,255,.9); outline:2px dashed rgba(120,220,255,.95);
+    outline-offset:2px; animation:ghostBlink 1s ease-in-out infinite;}
+  .ghost img{width:100%; display:block; filter:drop-shadow(0 1px 1px rgba(0,0,0,.6)) drop-shadow(0 0 4px rgba(120,220,255,.9));}
+  .ghost.ghostBall{width:20%; max-width:16px; opacity:.65; box-shadow:0 0 0 2px rgba(255,225,77,.9); outline-color:rgba(255,225,77,.95);}
+  @keyframes ghostBlink{0%,100%{opacity:.55;} 50%{opacity:.95;}}
   .cell.stack{cursor:pointer;}
   .cell .stackbadge{position:absolute; right:2px; top:2px; z-index:7; pointer-events:none;
     background:#ffcf3f; color:#222; font-size:9px; font-weight:800;
     min-width:13px; height:13px; line-height:13px; text-align:center; border-radius:7px;}
   .piece.hasball::after{content:""; position:absolute; right:-3px; bottom:-3px;
     width:11px;height:11px; background:url(data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAEYAAABFCAYAAAD3upAqAAAXXUlEQVR4nMWcCXwURdrGn+qeyUmYgCAECAEREgyGrAjLFXKgyE0AxXAoCCiIomEVULxY+FBEFoPIchqiH6grBNF1UWAJEVfBBQRjBALoEgIBYpRcEEimu79fVV/VPT0hCOzX+Nrn9FT9+3nferuqJgT/DwtpFREOgngA4QRsDaMgxNg+SY0AJ2tPnT353y7lfwXMgdLz8Ym9e6dVVVV1ZyAIPPyXE1iAOEEqB3Bo1uzZ+aPHjFkbG37roZtd5psG5tuzRfGCKE4QBCF12VvLwrMyMz0OFXaG4gdSQEDA5Z07c4LCwsIoqC0AMjreJEg3HMw3p3+eIAhiuiC6OguCiOPHj2P0qFFOKvCFUMc5favr3XeXrnlnbRPuK7+HgoyY8FuzbmQ9bhiYr04eSxVEMUMQxChBFEGhiKKI/vf2+7WkpOSWupThHxAxzvGFnTdv3qWhQ4eF0G0Fxv8LFWBujOfGALpuMLtO5McLoitDFMVECkMQXRAFEQf3fotFry2UTpwuEu2V8wfFuk38upTildDzzrswYdoU/DGhl4pFMSB9qQDpMZ7rczHhej6cczxvLiHCQUJIIiECqO3+YjvGpvTDnx6agITuPcSnnpx+uVnz5qWwPQW7a5lQtH/ccbbNYoy7esTw4aXL316OO+I6YfbU6UiKvQsfb/iQnRfUzycSkINHy0vmXk/dfpdith8+EC6I4hZBdCWKzG1c+PloATLm/g/OFZ3GlNkzMXTMaMsXnD1bjOyNG8s3ffSRXHWxqhFfaRjuQ0wQHLSEhISikSNHRKYkp/gUeOOGD7H01UVo1ToSTz0/C90SerHjClOQ8r2iICkm/Naymw7mi/x/U9fJFUXRo7vNsvkLsTEzC5OfmYExU6cgvHEj49aWymt27FgBVq1Ycf7rr//V0FtbG0w499G327e//fzYsWMb9rv33uCGYWGOsUbR1wqQ8eoiZC5fhZFj0/DUnFkI83h0OOWygqRrbb2uCczWvD0aFJeHKuXnghNYOHMOq/nLS5cg5s47oQde/ubEIbDqwL7MyUFW1rqiH/J+iAwJCa567LHHagf279+oZcsW8FEVV2iFK5eiWVFhEZ6d8iQqysuxaMXbiInrxODIUMoVBekdr6HlqjeYzw59nSqKYpbAoLiQt/87vDT1aQx8YARmzHvFCLp0TYipFj6G8G7CA6Kx4aFBqcwVuif00mKFL0QjKBtAzDZJUcz1m5p6Xnx9AUaMTYOsKoeee6S+cFz1uejT73bHE4IsEOKhld62+VO88fzLeO6N1zD4wftZqdVWhBhP15G8wznC+YgdnMDtiyy4EwhmqNYqq0Bm/xQGgJ6aMWcWOsZ1wswp09l1w8ek6QDXHS4rKbsj/NYt1w1my/5dNIXPBYiHVn77x3/HitcWY83fsxF9Z6weGVRlEGKppAWAg/Hn4EdVFIQoCAwM+0d4xQCyIkNWCCTIdM+Ac9/ggWj1eWuMHjCMXZs6Jg2EMOlk/VhWknS114o6wWz+dkc4gCwC4qGl3PHJZ1i5cAmWrM9E+ztiVChEzzeIryT8LVxLBHAq491LMxeDIjIwDA4RjBijMJUIkBQJRNZvosKh94yN64T3t36CMQOHMRcbPvZB+jn6arLlxwsl8bGN/LdWdSuGkCyAdKab/zl6HH95YR4Wv7cGt1MouvsYyZivG9XFyZ64+QRnlpeIDIqLrg1A6veq8URhSmGfFQBFVqD/I1rMie2swhnSOxkto1qhay+WEEaBsHetpGsGs3HPF6n/Of7TsO//ffDCN19+ffHEsROtnlnwCjp3u9sMgFyT4etA/uOLP35WdyMMgqApxaVBUlVDNLVQAISKRN0nCgQWcySjaFQpNN4kjRxS8ejUx8OS+yafHzx0WPMuXbsm5l8oSe/U6NaM+oMhJDwtcch6iWpSEBpBII0gCOiXOtinOqo31L/Vd8x+HS4iTIEqBAOOIFhUKmrfqxAKg16rgBDZ0pbroNtFd7iw98CBhjm5uc137spll0REtHhSbB2xRXLo7/H3SpAhSVJoXbXyqdTvfevyc09eOSokYmmq9UXgzhnXO+rXdykuLm5H6+p0zgcMcQnxgDLekkE5Fv3mLoQL5/b8xVoi57B/DSUdJkZG+MQaX8UQkuEMBbZ8s/6n6ly4z1mzWcXIaPV8xWmRWUxRuM9ySV9d5bSe9HnhtIBxhQa0IUCi3xpbNv3U6AYtRvLG8hQFkiIzs5ZMPS5z18kGUmvR8vN/FPwVVAESBZtqrIohZK5Vg9YbfX/gkM9x9UnyybmfTyu+x5wenp7Wy1pTzEPxyhIztq3o27qp+S+93lAL951lZWWy4qQkc2eCI5iAxiE0mUt19E69tNqO0TGk8DgU+Kjdj5L8weE7nPSsVq+4V7NaxYtamZrEjMGRZQMe/Yyi2O7pUBSH/fFs9MIOBoSk0nchSwJgR69XXuHlqpjXXoNPmaytQBXunK4WXSkmEA0OhcRBo4D4z9t69nwoOZQ21QcMIUglRv7gzNbiNooKxKhcHQFSsZsNRE5ODg4Xn8KyVStRUVlpVIpqX3cbCsHLQ9HMq8GSZEmNL4rD9zmYnZVfMCAkyXilFWxdQVxtFB0IFyB1M+FdpUXQNimE119fhKfT01mlD32fh5H3P4AjRwtscBQViuZGNRb1qK4mK+q1sq0LwhByHWrhxD4MmjsxMMGR4UkQiIfu6cmUkyt9tX0nqiorTDi6gox9GfZAYxeRvltwtACTJk7Chg0bLM3ymeKzuH/UKLy9YoVRUb3SDJAeeI2YophAOBgyB6e8vAwVZeWhlsDrqxZ9P8kAQwhJMoAYZr2DKAg1x/MP4+F7huKN517G8cNHDDgW5fhvEg3G69evx8SJE3G0oMAMlAo4FQLLV6zE+ImTUFFRqfXCmYAsBts5DsrhvHzMfnw6Ujp1gVLj9VxFLfoSb4ABIfFGV5pAQASbaqBg5vwXvUveW43lm9YjtGED/GncRDw9ejy2btxsAqJGA6DNnfTKV1ZWIj09HW8segOVVVVWYA5w9u3bj3vu648dOTlaMNYqrcCyb1FHWTmyN3yIIT2TMG7gMIR5GuLjf+1C7rffuJtHRPxmDci+StYVw3QR2vaWQ3KNt7NcI4FZrZetFUnt2BgxfnT5hOmPeehoABsVEF24dPES9uTsRnbW/+JiRRUGjhqJwWkPolVUlGO/74H9+/HySy/i3Nmz5vF6jUKqKf+4cWPx3OxZPsmEXlGqjnV/XYUdn21lb9O012742DRLRDhzphhDhwytrqmtDbarxXQxpRBnzrVRwbRrosg1XigGGLpW4bTpcHvpkvUrm9B+Xh6MPmxCIeTtO4AvNm3B55s2Y9Co+zFkdBq6JiQYfb+rVqzAqpUrfWHUsW8A4ABFR0djwfz5iImJZkdop/eOzz7Hur+uxJnCIta/O37aVLRs3coSb/htqsLJkyb5jzX0wjPn1JI3aN9U0UHoYJQaL4IDg8vf3pjloXJUwYjqWqQdR+ra7AQXcb74HL7YtBn/+NsmVpuJM5/FFzk7mVrgWNm64YA/pm00aNAAD48Zh5P5R/BPTR0jxoxm6tBTCXuCpyhWd126dGl5ZmamxxEK81G5Lenx4D0J+QfzdvMqUbclLFi+GLd1uN2iENECQ4ekbWuA6P7Wj7KxbedO7D2w39JfUxcc/rzTMX5JGziEDdG2aB1pqRcPhM+iYVPQo5Mmle7bt7+J5aayDLfLVf1Uevr95MTl00kDBgzKLj51prHCxZcpT02r7tU3MZh1FomiVTEC705W1Qjc+sSxExiblma2dHXAqY9a9CU5ORlLM6zdKPbU3x8k/RjNoQYPGFheUVHhUaHQC2SsXLMG8V3+kCwIgoANG9Y3DggMuAw6/C4I6JWc8Fu/oQOCacUVRba0Nuq+ZrK5lm371NpHt0dERHNTorbC26VsVMApe+VaIwqGPyc7XKP4UY5uYQ3CsHrtWo/L5bqkf+jpGTMu/+Huu1jZBVr58HAP1q5bGySIQm1oaGj1jOefbUyPiy6Rg6GuZdkEpcJQLHDoeZkD1eWuLtYS+4HDP00+W/WpJFNMiqXJdoJhAWVXkrbTIToaz7/wAqE3adOyZfXYhx8K0h8uUwx1g5iYGPTq2gP3pvQNbujxMDdxUXO5WOVNRSgaHCsMXinGOVlGn6QkW+mtcCwQHAApfGVox0lSMkLDwozEzgeGDYiTe/HHho8YHty7WzdvYs+ewTJ939LKLUSSprlUGWySz6AB7mN5R5hS9GOGO8lW95Ed9mW7amQJCUl90CA01C8cu3rssrdDTE5J9g/CAYgFrs991YfsCQpyud1urewUjlTGMl+mDpeIRo3CWe7h4tRCjzPVcD1leoxRQaiUrfFFUk3rH+mTnGhNVf3AsQNyig1d7u7qCMLJ7K5jAU3rIqkgik8VIb5HN6MOfdpEH9LfrgspnMi2USjIPwrR5WKmQ6HGbiabLiLbQKiAdDMVQ88lJCayiG/N5WXV/ABygtShQzQiWrTwC8KiFMWfSqA9VLOsZ4uKWH6kHwPX7XCSVj6qXRSqKipRcvYcgyFqUHRA9XMf7UsViXOnBDQICdVAyFZIfAS1LfZKDx021OcaOwi7QuzYLWWUJVRcuIBzp8+gXcdoHdSXPJhc1aVc6Na7O04cPmZRCzW3m+YtggWEvXnWXcj4cklS5SpRODZ3kjnl6KAcFMQvSVxr5ATCUXGcSiRJU4lkqrvgh3zc3jGGU7p0iAfDdiiM7kk9ceCbfSoMHYzbhEO/0gRgNx2Y9cup9UpMsMIwjAfEn7fGItq0Xs2NnDTHlC1x5ZG8kGWvsf/dnj2I796NL68FTK5+q57JCcj5x3ZTLW4KyA2X2w2Xyw0WvetyIVky4RjHZPRK7I3Q0BBfN1J4QJp6ZN/jQ4cM8askRxi0Z0/STPaqXZ9a5SXZVM7ubTvQuVsXQ+GKJOcaYCJJ0zI2kRhAr5TeqCivVN3JralGW1PF6CYbuYo96DopSS1E+/a3O6hGMd3ISU0aoESa7SqKHzMfjKSrwzBNHUwpVlcqPnUKPx0pQI++Sfq5wn53dGHj2PygPp2C9SbduC91AD75IBuzFrxgyWLthaKFENgzIpAdnp0+74n+d7GqAiUnT6FzXCfE9/ijMWivDuALvrOytElINVeu4G9r1iLn008x5rFHzRvbm2C991Dvj9bUaJaXy9q1+mzd9DH6DR+iKkVVmTHTigezRQczasJoTEp9GHMWzVUHsGTNfJ5YraV5M+EoWvm1ggrAK0+kI7bznZj9+nwGggiCNiCvTiGj+3rXKj+QT+9yzz19MW3kKLTv2BF39eph8xxFdyDtGZj90TwUHoi+vS17Cx6f86yWVrCczJifZ4wSRJKmVEKsqeqR1AuRbSKZanTXoTHGzcylrd1wB7jpO0Wd7kPXi+fMZWnAlOdmaMe8TNqS5u/M6D4XJPX4QK9tF9MBT899CbMemYyCvDzNPbh7aO4i6cc0M6/jXEpW7/n5po/Z4+uelKCX9/tBcT0P+YDh3Iktk9OnYum8vxgQAmxAqAXY4Bgxh6vgji2fYW/Ol1j4ztsICQlmgVDmm02j4JJZWaPl8GqAvOg/MhUDHhiB+enPovzCb7bKS8ZnLHCNQOvV9r0G8PfeXoVx0yYbQVmSvZZ+DAuYSNKUgimk2w9MUGc6vrs80wJDBxLgDjC3A9wsx7FH/rx932HN4mVYsHopgkKCDRiSESS9hoL4Qst6a2JUXt1+4sXZaNaqJRb8abb1Gg6iLOn34lQlmaqi37Vt8yfM+VKG9Neb7/Khf+iT5ReMthhTIpZkLcOSuYtQfekSpxwNCLMAi7ldouFGPxccx8KZL2PijGmIat/WbDFkyeoGlqesP3XzvMxVnF4ze+F8nC06jbf+vMCiFgMKp0ATtHmssqwcqxa+iUdnPs27rc/kIcf5NUXKLzTeRNHtgYn9ay5eqVZWrFsZ2O6221BTU4vamlrU1NawdW0tNa+2VrfLLpRh3vTnEXtXHB5Jf1wLtIIRYAVBMIOusdZbJIGbzUm4WZ1mUWkT+8zDkzFtzkz0Gz7UCPb8aKg5YqpunysuxsG9+6vfX5VJIiKaBy1YnaH3KxUO79a3jZ2Bv8mJdErELrrRLaXn+U2bsyNHpaVRxVR369attE/vhCYJvXsHBwYEmtPADBOw5IVXcWtEMzz05GT2RFjrRGQQRYVDC0TnyqkQZBsgmWu6zRmh4Lo+20a3w9xlizF3+rN0FIMFZzi0SnkHDiJn6/bS/d/slX4r+bUZoATTc6+tfFNVi9papTsB8Dsjq0j5hfrc+NcWLizc8MEHUU7XNG3cpLRPQh8pJSW5WVRUFFPLa7P+jBNHjmHBqsUICAqC1+tVv8hooq3Ns0UxfDPNwbFMNOP6jnd88g+sXvgmsrZ9jJCwBrhYUYmvduZW78n9qvTQv/c38dZ4g82+Cz3xUZC9Z5veZH/yQI/+qb41q3ueb3pd82Dp8stvpU02bd6EjR99RIdwqyNuaV59Kv+nxqs2rUOjWxozKLQ7g66pEVoYqhAKRXFWjO46PCjzMVonHaYMvg953+7HS088c6W09NfK0vPnaa9/MBREGkDsa9YPwxK6ckVRJjhWrC4w9DWhSPkl9Zu9ez+rCw4R1axVkuTgovNngoNbeiobN20SFhgYqPUAelmLRbdpIFQB8VBsLsRnwDwMP1NmI9u3vbxz6/YgAIHqEdsgkr6mt2RD0HT8qxi3NGuaOjphiN+Z4XX+wi2SND1UWVn5al3XsEILBIJLhOAWccVbE7YuM7M0IDAA1AKZBWoWgMCgQKO71GyVvD7JmeSQvNntxJECZGWsCDJfOG3vW1rZiJuWzaWZiL27v359dMKQ3DrrdLVK08UT14LFm/pcy14dJBlLlvwFnTrdyRQieSV4JXUtSbzpfSTqTCj9VYAPuobzGINvZpGnpo4rLS35pYnRcumf5ebdM5Voa1Ux5N3asmq/LnRNYK4VDl0ahISWf/D++56goGBINMZQEA5gZG0Ondr/yr/oKeavWbjxa335YM175Z9+mO0xKsKBAeEAc2AolJrSi1eFQhexvhW9cr5yS1CzsLb6/JGrLTW1tUEFRwtKBw8aFELzFmYiXRNttFLQRjIFYzTCaupnmJsaeYwaMwp/+g9WLH4riLgEFuMIvQ/dZiaytaBt01FRbf/dKyVV9YJyTWA4OPQHj93rc/3Zc+dCoqM7XGp3221uCxxR/TWJOuSrDwGL2liWSxu10PqcRXvHvIgXZ8wuvXzlcgiDIKpwBA4KA6KB0o6/e7m4ot5Q8HvnwHviWkzQ5uB7rnYt/bMD2z//PCg4OIRL0bXAK+kvnbobmQN7RneHkb2qrct7a9eVZ3+4yeNTeuIcZwghj1w8+ds1/0j9d/84wBPXIl57G+98tWvpnx1Yu3p1ExZjZGvQ1SHJsmIOzVjGyvWZmAp+Pn4CT0yZ5lwFe9AlKKRTdKuO//K7fph+Ta7EL1fOV567cr5yZVCzMHK1RLC4uDgksmXLS7GxsW4+ruh/5sBuzG1E+/CNiCefmP5rNXUhUYDFXPY4IywVXEJaZUHJ7/7zKjfk5ySeuBZtNPUk+ruGTi2JDGyC+1IHIja+E1q1aY2OcXdoiuHHwRXDlY7kHWYzpQp+OIKdu3Jw7tKvfmqhJ4H4EoSkl+cVX/dfCLmhv7PxxLVI0rotDECd4+KKRgwf3oROFtiT+zV+PJQPuj59sginC4vYNd0Te7K1Ppn629172H6YJwwd42IRE3cH/pjQHa073IaPsjeW5uzaJVZVVTXivpr2PM4tzyuuM2m7luWm/ACJxp/Bgwa98uS0aX1btWoVVte1FWXlDBa/UEU1DFfjKx9n+JGjf+7ceemdzMyNh48cybgRCrEvN/2XWfR9S5uKnqT38VzHUqiNgW2JJE2v+tvp61n+ez9ZUyHRWERbM2p0W+8gsscm1ilPf02jjZIy0zrsb/4C4P8Aic3C04S5bl4AAAAASUVORK5CYII=) center/contain no-repeat;}
-  .ballfree{position:absolute; width:16px;height:16px; z-index:5; pointer-events:none;
+  .ballfree{position:absolute; width:3.8%; height:2.4%; max-width:16px; max-height:16px;
+    transform:translate(-50%,-50%); z-index:5; pointer-events:none;
     background:url(data:image/png;base64,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) center/contain no-repeat; transition:all .25s;}
 
   .controls{display:flex; gap:8px; padding:0 10px; margin-top:10px;}
@@ -264,9 +272,8 @@
     <div id="selectFan"></div>
   </div>
 
-  <!-- Unity版準拠：選択は盤上ポップアップ（駒=移動／ボール=パス）。下部はSHOOT(文脈依存)＋TURN END -->
+  <!-- Unity版準拠：選択は盤上ポップアップ（駒=移動／ボール=パス／シュートも扇内の選択肢）。下部はTURN ENDのみ -->
   <div class="controls">
-    <button class="btn gold" id="shootBtn" style="display:none">SHOOT</button>
     <button class="btn primary" id="endTurnBtn">TURN END（決定）</button>
   </div>
   <div class="controls" style="margin-top:8px">
@@ -542,6 +549,12 @@ function resolveFlyingPassPath(passPiece, ex, ey){
   }
   return {cut:false, cutAt:null, cutter:null};
 }
+/* 演出（カットイン）を出すべきか＝実際に敵との競り合い（奪取判定）が発生するケースかどうか。
+   経路上または着地/到達マスに敵駒が一体もいなければ「素通り」＝演出なし。 */
+function hasDefensiveContact(piece, route, tx, ty){
+  if(route.some(([x,y])=>piecesAt(x,y).some(q=>q.team!==piece.team))) return true;
+  return piecesAt(tx,ty).some(q=>q.team!==piece.team);
+}
 
 /* --- タックル成功率：TackleSuccessProbability（回避率を100から引く）--- */
 function calcTackleSuccess(hasBallPiece, tacklePiece){
@@ -784,6 +797,7 @@ function hasCommand(pieceId){ return myCommands.some(c=>c.pieceId===pieceId); }
 let chainHolderId=null;   // 仕込み上、現在ボールを持っている駒
 let chainPassCount=0;     // このターンに仕込んだパス回数（Unity MoveNum 相当）
 let chainMovedIds=new Set(); // このターンに「移動」を仕込んだ駒（=もうパスを受けても蹴れるが移動はできない）
+let chainPassedIds=new Set(); // このターンに「パス／スルーパス」でボールを離した駒（=もう移動/ドリブルは予約不可）
 
 /* ===== 描画 ===== */
 const boardEl=document.getElementById('board');
@@ -862,8 +876,8 @@ function render(){
   if(ball.target==='cell'){
     const ci=COLS.indexOf(ball.x), ri=ROWS.indexOf(ball.y);
     const b=document.createElement('div'); b.className='ballfree';
-    b.style.left=`calc(${(ci+0.5)*cw}% - 8px)`;
-    b.style.top=`calc(${(ri+0.5)*ch}% - 8px)`;
+    b.style.left=((ci+0.5)*cw)+'%';
+    b.style.top=((ri+0.5)*ch)+'%';
     boardEl.appendChild(b);
   }
   // 移動先/パス先ゴースト（自分=青の予約コマンドのみ・仕込み中のみ。相手AIの予約には出さない）
@@ -872,7 +886,8 @@ function render(){
       const p=pieceById(cmd.pieceId); if(!p) return;
       const ci=COLS.indexOf(cmd.tx), ri=ROWS.indexOf(cmd.ty);
       if(ci<0||ri<0) return;
-      const gx=(ci+0.5)*cw, gy=(ri+0.5)*ch;
+      // マス中心からわずかにずらして描画し、既存駒と完全に重ならないようにする（視認性対策）。
+      const gx=(ci+0.68)*cw, gy=(ri+0.32)*ch;
       const g=document.createElement('div');
       const img=document.createElement('img');
       if(cmd.type==='move'||cmd.type==='dribble'){
@@ -910,16 +925,9 @@ function render(){
   }
   const hint=document.getElementById('modeHint');
   if(state.phase==='replay')hint.textContent='▶ リプレイ再生中…';
-  else if(state.mode==='pass')hint.textContent='パス：青い丸のマス（味方/空マス）をタップ／SHOOTでシュート';
+  else if(state.mode==='pass')hint.textContent='パス：青い丸のマス（味方/空マス）をタップ／ボールをタップした際の選択肢からシュートも可能';
   else if(state.mode==='move')hint.textContent='移動/ドリブル：黄色いマスをタップ／ボールをタップでパスに切替';
-  else hint.textContent='駒をタップ＝移動、ボールをタップ＝パス（Unity版準拠）。仕込んだら TURN END';
-  // SHOOTボタン：ボール選択中かつシュート可能エリアでのみ表示（Unity版のHUD SHOOT準拠）
-  const shootBtn=document.getElementById('shootBtn');
-  if(shootBtn){
-    const h=chainHolder();
-    const canShoot = state.phase==='input' && state.ballSelected && h && h.team==='b' && calcShoot(h).area!=='-';
-    shootBtn.style.display = canShoot ? 'inline-block' : 'none';
-  }
+  else hint.textContent='駒をタップ＝移動、ボールをタップ＝パス／シュート（Unity版準拠）。仕込んだら TURN END';
   renderSelectFan(); // 駒/ボール選択の扇ポップアップ
 }
 
@@ -935,7 +943,11 @@ function buildSelectItems(x,y){
   const items=[];
   own.forEach(p=>{
     items.push({type:'piece',piece:p});
-    if(heldBallHere && holder.id===p.id) items.push({type:'ball', held:true, ownerId:p.id}); // 保持駒の隣
+    if(heldBallHere && holder.id===p.id){
+      items.push({type:'ball', held:true, ownerId:p.id}); // 保持駒の隣
+      // シュート可能エリアなら、ボールの隣に「シュート」も選択肢として並べる（下部固定ボタンを廃止した代替）
+      if(calcShoot(holder).area!=='-') items.push({type:'shoot', ownerId:p.id});
+    }
   });
   if(looseBallHere && !heldBallHere && own.length>0) items.push({type:'ball', held:false});
   return items;
@@ -964,18 +976,26 @@ function renderSelectFan(){
   items.forEach((it,i)=>{
     const {ox,oy}=posOf(i);
     const el=document.createElement('div');
-    el.className='selOpt'+(it.type==='ball'?' ball':'');
+    el.className='selOpt'+(it.type==='ball'?' ball':'')+(it.type==='shoot'?' shoot':'');
     el.style.left=ox+'%'; el.style.top=oy+'%';
     el.style.animationDelay=(i*35)+'ms';
-    const img=document.createElement('img');
-    img.src = it.type==='ball' ? (IMG.ball||IMG.have_ball) : IMG[it.piece.posType+'_'+it.piece.team];
-    el.appendChild(img);
-    el.title = it.type==='ball' ? 'ボール' : label(it.piece);
-    // タップ→ポップ拡大→その後に選択確定（範囲ハイライト表示）へ
+    if(it.type==='shoot'){
+      const sp=document.createElement('span'); sp.textContent='SHOOT'; el.appendChild(sp);
+    }else{
+      const img=document.createElement('img');
+      img.src = it.type==='ball' ? (IMG.ball||IMG.have_ball) : IMG[it.piece.posType+'_'+it.piece.team];
+      el.appendChild(img);
+    }
+    el.title = it.type==='ball' ? 'ボール' : (it.type==='shoot' ? 'シュート' : label(it.piece));
+    // タップ→ポップ拡大→その後に選択確定（範囲ハイライト表示）／シュートは即実行へ
     el.addEventListener('click',ev=>{
       ev.stopPropagation();
       el.classList.add('pop');
-      setTimeout(()=>{ it.type==='ball' ? selectBallItem(x,y) : selectPieceItem(it.piece); }, 200);
+      setTimeout(()=>{
+        if(it.type==='ball') selectBallItem(x,y);
+        else if(it.type==='shoot'){ const h=pieceById(it.ownerId); if(h) tryShoot(h); }
+        else selectPieceItem(it.piece);
+      }, 200);
     });
     layer.appendChild(el);
   });
@@ -992,6 +1012,8 @@ function moveLimitList(cost){
 function isMovable(p,x,y){
   if(p.team!=='b')return false;
   if(chainMovedIds.has(p.id))return false;  // このターン移動を仕込み済みなら不可
+  // パス／スルーパス予約済みの駒でも、選び直して移動/ドリブルへ変更することは許可する
+  // （movePiece側で実際のボール保持状況から常に正しい種別=move/dribbleへ補正するため、混同は起きない）
   const c=cellAt(x,y); if(!c)return false;
   if(c.t==='selfgoal'||c.t==='oppgoal')return false;
   if(p.sx===x&&p.sy===y)return false;
@@ -1021,9 +1043,21 @@ function isPassable(p,x,y){
 }
 
 function onPieceClick(p,cx,cy){
-  // パスモード中に味方(パス可能)駒タップ＝その駒へパス
-  if(state.selected && state.mode==='pass' && p.team==='b' && isPassable(state.selected,p.x,p.y)){
-    doPassToPiece(state.selected,p);return;
+  // 駒選択中に、行動先として有効なマス（相手駒/自駒が既に乗っているマスも含む）をタップした場合は
+  // そちらを優先する。個別駒のクリックハンドラがマスのクリックを奪ってしまう（stopPropagation）ため、
+  // ここでonCellClickと同じ判定をこちらでも行う。
+  if(state.selected){
+    if(state.mode==='pass' && isPassable(state.selected,p.x,p.y)){
+      // タップした駒自身が味方（＝パス対象そのもの）ならその駒へ直接パス。
+      // 相手の駒や、同マスの別の味方駒をタップした場合はマスへのパス扱い（doPassToCell側で
+      // 味方がいれば自動的にその駒へのパスに切り替わる）。
+      if(p.team==='b'){ doPassToPiece(state.selected,p); return; }
+      doPassToCell(state.selected,p.x,p.y); return;
+    }
+    if(state.mode==='move' && isMovable(state.selected,p.x,p.y)){
+      const carry = chainHolder() && chainHolder().id===state.selected.id;
+      movePiece(state.selected,p.x,p.y,carry); return;
+    }
   }
   if(p.team!=='b'){ log('相手の駒は操作できません（プロト版）'); return; }
   // それ以外は「そのマスの選択」扱い（扇ポップアップ）
@@ -1047,6 +1081,7 @@ function selectPieceItem(p){
   const isHolder = chainHolder() && chainHolder().id===p.id;
   if(isHolder) log(`${label(p)}（ボール保持）を選択：黄マスへドリブル／ボールをタップでパス`);
   else if(chainMovedIds.has(p.id)) log(`${label(p)} はこのターン移動済み`);
+  else if(chainPassedIds.has(p.id)) log(`${label(p)} はこのターンパス予約済み（選び直すと移動/ドリブルに変更されます）`);
   else log(`${label(p)} を選択：黄色いマスへ移動を予約`);
   render();
 }
@@ -1071,7 +1106,7 @@ function selectBall(){
   if(!h || h.team!=='b'){ log('パスできるボール保持駒がいません'); return; }
   state.popup=null; state.selected=h; state.expanded=null;
   state.mode='pass'; state.ballSelected=true;
-  log(`ボール選択：青い丸のマス（味方/空マス）へパス${calcShoot(h).area!=='-'?'／SHOOTでシュート':''}`);
+  log(`ボール選択：青い丸のマス（味方/空マス）へパス${calcShoot(h).area!=='-'?'／再度ボールをタップしシュートも選択可':''}`);
   render();
 }
 // 行動選択は盤上ポップアップ（駒タップ=移動／ボールタップ=パス）へ移行。旧UIの再描画呼び出しは無効化。
@@ -1085,6 +1120,8 @@ function onCellClick(x,y){
     const p=state.selected;
     if(state.mode==='pass' && isPassable(p,x,y)){ doPassToCell(p,x,y); return; }
     if(state.mode==='move' && isMovable(p,x,y)){
+      // 種別は「ユーザーがどの行動を選んだか」だけで決める（実行時のライブなボール保持状態から逆算しない）。
+      // ドリブルはボールをタップして選ぶ操作（chainHolder）でのみ成立する。
       const carry = chainHolder() && chainHolder().id===p.id;
       movePiece(p,x,y,carry); return;
     }
@@ -1099,7 +1136,11 @@ function onCellClick(x,y){
   handleCellTap(x,y);
 }
 
-/* ===== 仕込み（予約）：即実行せずコマンドを積む ===== */
+/* ===== 仕込み（予約）：即実行せずコマンドを積む =====
+   駒単位でしかロックしない：既存のパス／スルーパス予約がある駒でも選択・上書きは可能（キャンセル＋選び直し）。
+   種別(type)は呼び出し側が渡した carryBall（＝ユーザーが選んだ行動）だけで決まる。
+   実行時のライブなボール保持状態（ballHolder()）を見て暗黙に上書きすることはしない。
+   スルーパス（スペースへのパス）はこの関数を一切経由しない別経路（doPassToCell）で処理する。 */
 function movePiece(p,x,y,carryBall){
   myCommands=myCommands.filter(c=>c.pieceId!==p.id);
   myCommands.push({type:carryBall?'dribble':'move', pieceId:p.id, tx:x, ty:y, team:'b'});
@@ -1117,6 +1158,7 @@ function movePiece(p,x,y,carryBall){
 function doPassToPiece(from,to){
   myCommands=myCommands.filter(c=>c.pieceId!==from.id);
   myCommands.push({type:'pass', pieceId:from.id, targetId:to.id, tx:to.x, ty:to.y, team:'b'});
+  chainPassedIds.add(from.id); // このターンパス済み（表示用の記録。再選択して移動/ドリブルへの変更は可）
   // 連鎖：ボールは to へ移る。passCount を増やす。
   chainHolderId=to.id;
   chainPassCount++;
@@ -1124,11 +1166,14 @@ function doPassToPiece(from,to){
   // 受け手がまだ移動を仕込んでいなければ、続けてその駒を選択しパスモードに（無限連鎖）
   continueChainFrom(to);
 }
+/* スルーパス（スペースへのパス）専用経路。movePieceは一切呼ばない＝駒の座標(from.x/from.y)は変更しない。
+   ボールだけが (x,y) へ飛ぶ。空マスでなく味方がいた場合のみ通常パス(doPassToPiece)に委譲する。 */
 function doPassToCell(from,x,y){
   const mate=piecesAt(x,y).find(q=>q.team===from.team);
   if(mate){ return doPassToPiece(from,mate); }
   myCommands=myCommands.filter(c=>c.pieceId!==from.id);
   myCommands.push({type:'throughpass', pieceId:from.id, tx:x, ty:y, team:'b'});
+  chainPassedIds.add(from.id); // このターンパス済み（表示用の記録。再選択して移動/ドリブルへの変更は可）
   // スルーパス先は空マス→そのマスに味方を後で動かして受ける運用。連鎖の論理保持は解除。
   chainHolderId=null;
   chainPassCount++;
@@ -1167,12 +1212,8 @@ function buildKickoffAfterGoal(){ const ko=pieces.find(p=>p.team==='b'&&p.posTyp
 
 function log(m){const l=document.getElementById('log');l.innerHTML=`<div>${m}</div>`+l.innerHTML;}
 
-// 旧・下部モードボタンは撤去。選択は盤上ポップアップ（駒タップ=移動／ボールタップ=パス）、シュートは #shootBtn。
+// 旧・下部モードボタンは撤去。選択は盤上ポップアップ（駒タップ=移動／ボールタップ=パス／シュートも扇内の選択肢）。
 document.getElementById('resetBtn').addEventListener('click',()=>{buildTeams();myCommands=[];oppCommands=[];state={turn:1,half:'前半',scoreSelf:0,scoreOpp:0,selected:null,mode:'idle',expanded:null,atFirst:null,atSecond:null,matchOver:false,ballSelected:false,popup:null,phase:'input'};log('配置をリセットしました');render();});
-document.getElementById('shootBtn').addEventListener('click',()=>{
-  const h=chainHolder();
-  if(h&&h.team==='b') tryShoot(h); else log('シュートできるボール保持駒がいません');
-});
 document.getElementById('tackleDemoBtn').addEventListener('click',()=>{
   const holder=ballHolder();
   if(!holder){ log('盤上にボール保持駒がいません'); return; }
@@ -1320,8 +1361,11 @@ async function execCommand(cmd){
   const p=pieceById(cmd.pieceId);
   if(!p)return; // 既に奪われた等
   if(cmd.type==='move'||cmd.type==='dribble'){
-    const carry=(cmd.type==='dribble')||(ballHolder()&&ballHolder().id===p.id);
-    if(carry) await showCutin('dribble',850);
+    // carryはcmd.type（予約時に確定した種別）だけで決める。movePiece側の原則と統一。
+    // 実行時のライブなボール保持状態（ballHolder()）を見て暗黙に上書きすることはしない。
+    const carry=cmd.type==='dribble';
+    // 演出は移動先に敵駒がいて接触（競り合い）が起こり得る場合のみ。素通りの移動では出さない。
+    if(carry && piecesAt(cmd.tx,cmd.ty).some(q=>q.team!==p.team)) await showCutin('dribble',850);
     p.x=cmd.tx; p.y=cmd.ty;
     log(`${p.team==='b'?'青':'赤'} ${label(p)} → (${cmd.tx},${cmd.ty}) ${carry?'ドリブル':'移動'}`);
     // ボール保持のままゴールエリア到達で得点
@@ -1331,7 +1375,9 @@ async function execCommand(cmd){
   }else if(cmd.type==='pass'){
     const to=pieceById(cmd.targetId);
     if(!to){ return; }
-    await showCutin('pass',850);
+    // 演出は経路上／着地マスに敵駒がいて奪取判定（チェック）が起こり得る場合のみ。素通りでは出さない。
+    const passRoute=getRoute(p.x,p.y,to.x,to.y);
+    if(hasDefensiveContact(p,passRoute,to.x,to.y)) await showCutin('pass',850);
     // 1. 経路上の敵マスでのパスカット判定（敵を通り越すと取られる）
     const path=resolveFlyingPassPath(p, to.x, to.y);
     if(path.cut){
@@ -1352,7 +1398,9 @@ async function execCommand(cmd){
     else { await showCutinAtPiece('passCut',950,to.x,to.y); log('→ 着地マスでパスカット'); placeLooseBallDefensive(to.x,to.y,'→ こぼれ球'); }
     render();
   }else if(cmd.type==='throughpass'){
-    await showCutin('thruPass',850);
+    // 演出は経路上／着地マスに敵駒がいて奪取判定（チェック）が起こり得る場合のみ。素通りでは出さない。
+    const thruRoute=getRoute(p.x,p.y,cmd.tx,cmd.ty);
+    if(hasDefensiveContact(p,thruRoute,cmd.tx,cmd.ty)) await showCutin('thruPass',850);
     // 1. 経路上の敵マスでのパスカット判定
     const path=resolveFlyingPassPath(p, cmd.tx, cmd.ty);
     if(path.cut){
@@ -1482,6 +1530,7 @@ function resetChain(){
   chainHolderId = (h && h.team==='b') ? h.id : null;
   chainPassCount=0;
   chainMovedIds=new Set();
+  chainPassedIds=new Set();
 }
 
 buildTeams();
