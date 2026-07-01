@@ -787,6 +787,11 @@ let state={turn:1,half:'前半',scoreSelf:0,scoreOpp:0,
    type: move/dribble/pass/throughpass/shoot, pieceId, tx,ty, targetId */
 let myCommands=[];      // 自分(青)が仕込んだ操作
 let oppCommands=[];     // 相手(赤)が仕込んだ操作
+function isMoveCommand(c){ return c.type==='move'||c.type==='dribble'; }
+function isBallCommand(c){ return c.type==='pass'||c.type==='throughpass'||c.type==='shoot'; }
+function clearMyCommands(pieceId, predicate){
+  myCommands=myCommands.filter(c=>c.pieceId!==pieceId || !predicate(c));
+}
 function commandsOf(pieceId){ return myCommands.filter(c=>c.pieceId===pieceId); }
 function hasCommand(pieceId){ return myCommands.some(c=>c.pieceId===pieceId); }
 
@@ -797,7 +802,7 @@ function hasCommand(pieceId){ return myCommands.some(c=>c.pieceId===pieceId); }
 let chainHolderId=null;   // 仕込み上、現在ボールを持っている駒
 let chainPassCount=0;     // このターンに仕込んだパス回数（Unity MoveNum 相当）
 let chainMovedIds=new Set(); // このターンに「移動」を仕込んだ駒（=もうパスを受けても蹴れるが移動はできない）
-let chainPassedIds=new Set(); // このターンに「パス／スルーパス」でボールを離した駒（=もう移動/ドリブルは予約不可）
+let chainPassedIds=new Set(); // このターンに「パス／スルーパス」でボールを離した駒（通常移動は追加可）
 
 /* ===== 描画 ===== */
 const boardEl=document.getElementById('board');
@@ -1012,8 +1017,8 @@ function moveLimitList(cost){
 function isMovable(p,x,y){
   if(p.team!=='b')return false;
   if(chainMovedIds.has(p.id))return false;  // このターン移動を仕込み済みなら不可
-  // パス／スルーパス予約済みの駒でも、選び直して移動/ドリブルへ変更することは許可する
-  // （movePiece側で実際のボール保持状況から常に正しい種別=move/dribbleへ補正するため、混同は起きない）
+  // パス／スルーパス予約済みの駒でも、ボールを置いた通常移動を追加できる。
+  // ドリブルだけはボール操作そのものなので、パス/シュートとは同時予約しない。
   const c=cellAt(x,y); if(!c)return false;
   if(c.t==='selfgoal'||c.t==='oppgoal')return false;
   if(p.sx===x&&p.sy===y)return false;
@@ -1081,7 +1086,7 @@ function selectPieceItem(p){
   const isHolder = chainHolder() && chainHolder().id===p.id;
   if(isHolder) log(`${label(p)}（ボール保持）を選択：黄マスへドリブル／ボールをタップでパス`);
   else if(chainMovedIds.has(p.id)) log(`${label(p)} はこのターン移動済み`);
-  else if(chainPassedIds.has(p.id)) log(`${label(p)} はこのターンパス予約済み（選び直すと移動/ドリブルに変更されます）`);
+  else if(chainPassedIds.has(p.id)) log(`${label(p)} はこのターンパス予約済み（ボールを置いた移動も予約できます）`);
   else log(`${label(p)} を選択：黄色いマスへ移動を予約`);
   render();
 }
@@ -1137,12 +1142,18 @@ function onCellClick(x,y){
 }
 
 /* ===== 仕込み（予約）：即実行せずコマンドを積む =====
-   駒単位でしかロックしない：既存のパス／スルーパス予約がある駒でも選択・上書きは可能（キャンセル＋選び直し）。
+   通常移動とボール操作（パス/スルーパス/シュート）は別枠で持てる。
    種別(type)は呼び出し側が渡した carryBall（＝ユーザーが選んだ行動）だけで決まる。
    実行時のライブなボール保持状態（ballHolder()）を見て暗黙に上書きすることはしない。
    スルーパス（スペースへのパス）はこの関数を一切経由しない別経路（doPassToCell）で処理する。 */
 function movePiece(p,x,y,carryBall){
-  myCommands=myCommands.filter(c=>c.pieceId!==p.id);
+  if(carryBall){
+    // ドリブルは「ボールを運ぶ」操作なので、同じ駒のパス/シュートとは排他にする。
+    myCommands=myCommands.filter(c=>c.pieceId!==p.id);
+  }else{
+    // 通常移動は、同じ駒が先に出したパス/スルーパスを消さない。
+    clearMyCommands(p.id, isMoveCommand);
+  }
   myCommands.push({type:carryBall?'dribble':'move', pieceId:p.id, tx:x, ty:y, team:'b'});
   chainMovedIds.add(p.id);
   p.moved=true;
@@ -1156,9 +1167,9 @@ function movePiece(p,x,y,carryBall){
   clearSelection(); render();
 }
 function doPassToPiece(from,to){
-  myCommands=myCommands.filter(c=>c.pieceId!==from.id);
+  clearMyCommands(from.id, c=>isBallCommand(c)||c.type==='dribble');
   myCommands.push({type:'pass', pieceId:from.id, targetId:to.id, tx:to.x, ty:to.y, team:'b'});
-  chainPassedIds.add(from.id); // このターンパス済み（表示用の記録。再選択して移動/ドリブルへの変更は可）
+  chainPassedIds.add(from.id); // このターンパス済み（表示用の記録。再選択して通常移動を追加できる）
   // 連鎖：ボールは to へ移る。passCount を増やす。
   chainHolderId=to.id;
   chainPassCount++;
@@ -1171,9 +1182,9 @@ function doPassToPiece(from,to){
 function doPassToCell(from,x,y){
   const mate=piecesAt(x,y).find(q=>q.team===from.team);
   if(mate){ return doPassToPiece(from,mate); }
-  myCommands=myCommands.filter(c=>c.pieceId!==from.id);
+  clearMyCommands(from.id, c=>isBallCommand(c)||c.type==='dribble');
   myCommands.push({type:'throughpass', pieceId:from.id, tx:x, ty:y, team:'b'});
-  chainPassedIds.add(from.id); // このターンパス済み（表示用の記録。再選択して移動/ドリブルへの変更は可）
+  chainPassedIds.add(from.id); // このターンパス済み（表示用の記録。再選択して通常移動を追加できる）
   // スルーパス先は空マス→そのマスに味方を後で動かして受ける運用。連鎖の論理保持は解除。
   chainHolderId=null;
   chainPassCount++;
@@ -1200,7 +1211,7 @@ function continueChainFrom(to){
 function tryShoot(p){
   const r=calcShoot(p);
   if(r.area==='-'){ log('シュート可能エリア外です（敵PA/VAで撃てます）'); return; }
-  myCommands=myCommands.filter(c=>c.pieceId!==p.id);
+  clearMyCommands(p.id, c=>isBallCommand(c)||c.type==='dribble');
   myCommands.push({type:'shoot', pieceId:p.id, tx:p.x, ty:p.y, team:'b'});
   chainHolderId=null; // シュートで連鎖終了
   log(`仕込み：${label(p)} のシュート予約（${r.area} ${r.prob}%）`);
