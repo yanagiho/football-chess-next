@@ -1366,6 +1366,13 @@ async function execCommand(cmd){
     const carry=cmd.type==='dribble';
     // 演出は移動先に敵駒がいて接触（競り合い）が起こり得る場合のみ。素通りの移動では出さない。
     if(carry && piecesAt(cmd.tx,cmd.ty).some(q=>q.team!==p.team)) await showCutin('dribble',850);
+    // carry=falseなのにこの駒がボールを保持している場合（例：パス予約を選び直して移動に変更した等）、
+    // ballはpieceIdで駒に追従する作りのため、ここで明示的に切り離さないと移動先までボールが
+    // ついてきてしまう（見た目上ドリブルと区別がつかなくなる）。移動前の座標で置き去りにする。
+    if(!carry && ball.target==='piece' && ball.pieceId===p.id){
+      ball={target:'cell', pieceId:null, x:p.x, y:p.y};
+      log(`${p.team==='b'?'青':'赤'} ${label(p)} がボールを置いて移動`);
+    }
     p.x=cmd.tx; p.y=cmd.ty;
     log(`${p.team==='b'?'青':'赤'} ${label(p)} → (${cmd.tx},${cmd.ty}) ${carry?'ドリブル':'移動'}`);
     // ボール保持のままゴールエリア到達で得点
