@@ -86,33 +86,68 @@
   .turn{font-size:11px; color:#9fb0bd; text-align:center; margin-bottom:8px;}
 
   .boardWrap{padding:4px 10px 8px; position:relative;}
-  .fxLayer{position:absolute; pointer-events:none; z-index:8;}
-  .fxBadge{position:absolute; transform:translate(-50%,-120%); white-space:nowrap;
-    font-size:12px; font-weight:800; color:#fff; padding:2px 8px; border-radius:11px;
-    background:rgba(8,12,16,.78); border:1px solid rgba(255,255,255,.55);
-    text-shadow:0 0 4px #000; animation:fxPop 1100ms ease-out forwards;}
-  @keyframes fxPop{
-    0%{opacity:0; transform:translate(-50%,-90%) scale(.6);}
-    18%{opacity:1; transform:translate(-50%,-120%) scale(1.06);}
-    78%{opacity:1; transform:translate(-50%,-130%) scale(1);}
-    100%{opacity:0; transform:translate(-50%,-165%) scale(1);}}
+  /* Unity版の選択UI：タップしたマスで駒が拡大展開し、ボールが独立トークンとして飛び出す */
+  .ballToken{position:absolute; width:34%; max-width:30px; transform:translate(-50%,-50%);
+    z-index:10; cursor:pointer; pointer-events:auto; animation:ballPop .16s ease-out;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.6));}
+  .ballToken img{width:100%; display:block;}
+  .ballToken.sel{filter:drop-shadow(0 0 1px #ffe14d) drop-shadow(0 0 7px #ffe14d);}
+  .ballToken::after{content:"PASS"; position:absolute; left:50%; bottom:-13px; transform:translateX(-50%);
+    font-size:8px; font-weight:800; color:#bfefff; text-shadow:0 0 3px #000; letter-spacing:.05em; white-space:nowrap;}
+  @keyframes ballPop{from{transform:translate(-50%,-50%) scale(.3); opacity:0;} to{opacity:1;}}
+  .piece.dimmed{opacity:.38; filter:grayscale(.5) brightness(.65);}
+  /* 駒/ボール選択の扇ポップアップ：マス中心から放射状に広がる選択肢 */
+  #selectFan{position:absolute; top:4px; left:10px; right:10px; bottom:8px; z-index:30; pointer-events:none;}
+  .selOpt{position:absolute; width:46px; height:46px; transform:translate(-50%,-50%) scale(.3); opacity:0;
+    pointer-events:auto; cursor:pointer; border-radius:50%;
+    background:radial-gradient(circle at 40% 35%, rgba(30,50,70,.96), rgba(10,20,30,.96));
+    box-shadow:0 3px 10px rgba(0,0,0,.6), 0 0 0 2px rgba(120,200,255,.85) inset;
+    display:flex; align-items:center; justify-content:center;
+    animation:selFanIn .18s cubic-bezier(.2,1.5,.4,1) forwards;}
+  .selOpt img{width:80%; height:80%; object-fit:contain; display:block;
+    filter:drop-shadow(0 1px 2px rgba(0,0,0,.6));}
+  .selOpt.ball{box-shadow:0 3px 10px rgba(0,0,0,.6), 0 0 0 2px rgba(255,225,77,.9) inset;}
+  .selOpt.shoot{background:radial-gradient(circle at 40% 35%, rgba(120,90,0,.96), rgba(60,40,0,.96));
+    box-shadow:0 3px 10px rgba(0,0,0,.6), 0 0 0 2px rgba(255,200,40,.95) inset;}
+  .selOpt.shoot span{color:#ffd24d; font-size:10px; font-weight:bold; text-shadow:0 1px 2px rgba(0,0,0,.8);}
+  .selOpt.solo{width:58px; height:58px;} /* 単一項目はマス中央に大きく表示 */
+  .selOpt:active{filter:brightness(1.2);}
+  /* 保持駒のボールバッジ（駒アイコン右上） */
+  .selBallBadge{position:absolute; right:-5px; top:-5px; width:20px; height:20px; border-radius:50%;
+    background:rgba(0,0,0,.35); box-shadow:0 0 0 1.5px rgba(255,225,77,.95), 0 1px 3px rgba(0,0,0,.6);
+    object-fit:contain; padding:1px; pointer-events:none;}
+  @keyframes selFanIn{to{transform:translate(-50%,-50%) scale(1); opacity:1;}}
+  /* 選択タップ時のポップ拡大演出（この直後に範囲ハイライトを表示） */
+  .selOpt.pop{animation:selPop .2s ease-out forwards !important; z-index:40;}
+  @keyframes selPop{0%{transform:translate(-50%,-50%) scale(1);} 60%{transform:translate(-50%,-50%) scale(1.65);}
+    100%{transform:translate(-50%,-50%) scale(1.4); opacity:.85;}}
+  /* field.png(705x1143=0.617)に合わせる。従来の5/7(0.714)は横伸び＆グリッドずれの原因だった */
   .board{position:relative; width:100%; aspect-ratio:705 / 1143;
     background-image:var(--fieldImg);
     background-size:100% 100%; background-repeat:no-repeat; background-position:center;
-    border-radius:6px; overflow:hidden; touch-action:none;
+    border-radius:6px; overflow:visible; touch-action:none; /* 展開時のコマがはみ出しても切れないように */
     box-shadow:0 4px 16px rgba(0,0,0,.5);}
+  /* 論理セルの枠を薄く表示し、コマがどのマスの中央にいるか分かるようにする */
   .cell{position:absolute;
-    display:flex; align-items:center; justify-content:center;}
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:inset 0 0 0 1px rgba(255,255,255,.07);}
   .cell .areaLabel{position:absolute; top:2px; left:3px; font-size:8px; color:rgba(255,255,255,.4);}
   /* エリアの色付けは控えめに（フィールド画像が主役） */
   .cell.pa{background:rgba(255,255,255,.04);} .cell.va{background:rgba(255,255,0,.07);}
   .cell.cross{background:rgba(0,255,255,.05);}
   .cell.selfgoal{background:rgba(31,95,176,.30);} .cell.oppgoal{background:rgba(176,48,48,.30);}
-  .cell.movable{background:var(--movable); cursor:pointer; box-shadow:inset 0 0 0 2px rgba(255,225,77,.6);}
+  .cell.movable{background:var(--movable); cursor:pointer;}
   .cell.passable{background:var(--pass); cursor:pointer;}
-  .cell.passable::before{content:""; position:absolute; left:50%; top:50%;
-    width:14px;height:14px;margin:-7px 0 0 -7px;border-radius:50%;
-    border:2px solid var(--passdot); box-shadow:0 0 6px var(--passdot);}
+  /* 移動先/パス先を大きな円マーカーで明示（セル幅の70%・脈動アニメ付き） */
+  .cell.movable::before, .cell.passable::before{content:""; position:absolute; left:50%; top:50%;
+    width:70%; aspect-ratio:1; transform:translate(-50%,-50%); border-radius:50%;
+    box-sizing:border-box; pointer-events:none; z-index:3; animation:selPulse 1.1s ease-in-out infinite;}
+  .cell.movable::before{border:3px solid rgba(255,225,77,.95); background:rgba(255,225,77,.20);
+    box-shadow:0 0 12px rgba(255,225,77,.75), inset 0 0 10px rgba(255,225,77,.35);}
+  .cell.passable::before{border:3px solid var(--passdot); background:rgba(63,208,255,.20);
+    box-shadow:0 0 12px var(--passdot), inset 0 0 10px rgba(63,208,255,.35);}
+  @keyframes selPulse{0%,100%{transform:translate(-50%,-50%) scale(.9); opacity:.75;}
+    50%{transform:translate(-50%,-50%) scale(1.05); opacity:1;}}
   .cell.selected{outline:3px solid var(--sel); outline-offset:-3px;}
 
   .pieces{position:absolute; inset:0; pointer-events:none;}
@@ -120,60 +155,33 @@
     transform:translate(-50%,-50%); transition:left .12s,top .12s,width .12s; z-index:4;}
   .piece img{width:100%; display:block; filter:drop-shadow(0 1px 1px rgba(0,0,0,.5));}
   .piece.psel img{filter:drop-shadow(0 0 0 #ffe14d) drop-shadow(0 0 4px #ffe14d);}
+  /* 選択確定時のポップ演出（単一項目の1タップ選択・弧項目確定の双方で気持ちよさを出す） */
+  .piece.psel{animation:piecePop .2s ease-out;}
+  @keyframes piecePop{0%{transform:translate(-50%,-50%) scale(1);} 55%{transform:translate(-50%,-50%) scale(1.35);} 100%{transform:translate(-50%,-50%) scale(1);}}
   .piece.reserved::after{content:"✓"; position:absolute; left:-4px; top:-6px; z-index:8;
     background:#3fcf6a; color:#fff; font-size:10px; font-weight:800;
     width:14px;height:14px;line-height:14px;text-align:center;border-radius:7px;}
   .piece.psel::before{content:""; position:absolute; inset:-3px; border:2px solid #ffe14d;
     border-radius:6px; box-shadow:0 0 6px #ffe14d; pointer-events:none;}
   .piece.hasball::after{pointer-events:none;}
-  .piece.expanded{width:44%; z-index:6;}
-  .piece.psel{width:54%; z-index:8;}          /* 選択駒を拡大（Unity風ズーム）*/
-  /* 保持駒の上のタップ可能なボール（駒とは別タップ対象） */
-  .balltap{position:absolute; right:-7px; bottom:-7px; width:20px; height:20px; padding:0;
-    border-radius:50%; border:2px solid rgba(255,255,255,.9); background:rgba(255,255,255,.12);
-    pointer-events:auto; cursor:pointer; z-index:9; box-shadow:0 0 7px rgba(255,255,255,.75);
-    animation:ballPulse 1.4s ease-in-out infinite;}
-  .balltap.active{border-color:#ffe14d; box-shadow:0 0 10px #ffe14d;}
-  .balltap.big{width:30px; height:30px; right:-11px; bottom:-11px; border-width:3px;}
-  @keyframes ballPulse{0%,100%{transform:scale(1);}50%{transform:scale(1.13);}}
-  /* ボール選択(パス)／ドリブル選択時：保持駒とボールを大きく表示（Unity: 単体×2.5 / ボール×2.3）*/
-  .piece.selbig{width:82%; z-index:10;}
-  .piece.selbig.hasball::after{width:17px; height:17px; right:-5px; bottom:-5px;}
-  /* 予約した操作の可視化：移動先の残像(ゴースト駒)＋経路の点線 */
-  .planLine{position:absolute; height:0; border-top:2px dashed rgba(255,225,77,.85);
-    transform-origin:0 0; pointer-events:none; z-index:3;}
-  .planLine.plan-pass,.planLine.plan-throughpass{border-top:2px dotted rgba(90,209,255,.95);}
-  .planLine.plan-shoot{border-top:3px dashed rgba(255,180,40,.97);}
-  .ghostPiece{position:absolute; width:6.5%; max-width:26px; transform:translate(-50%,-50%);
-    z-index:3; pointer-events:none; opacity:.5;}
-  .ghostPiece img{width:100%; display:block; filter:drop-shadow(0 0 2px rgba(255,225,77,.9));}
-  .ghostPiece::after{content:""; position:absolute; inset:-2px; border:1.5px dashed rgba(255,225,77,.85); border-radius:5px;}
-  .ghostPiece .gball{position:absolute; right:-5px; bottom:-5px; width:10px; height:10px; border-radius:50%;
-    background:#fff; box-shadow:0 0 5px rgba(255,255,255,.8);}
-  /* 放射状メニュー：駒中心に配置し、上下左右へボタンを散らす */
-  .radialMenu{position:absolute; width:0; height:0; z-index:9; pointer-events:none;}
-  .radialBtn{position:absolute; pointer-events:auto; transform:translate(-50%,-50%);
-    font-size:11px; font-weight:800; color:#fff; border:none; cursor:pointer;
-    padding:5px 10px; border-radius:14px; white-space:nowrap; letter-spacing:.02em;
-    background:rgba(22,28,34,.94); box-shadow:0 2px 5px rgba(0,0,0,.5), inset 0 0 0 1px rgba(255,255,255,.35);
-    animation:radPop .14s ease-out;}
-  .radialBtn:active{transform:translate(-50%,-50%) scale(.93);}
-  .radialBtn.r-top{ top:-36px; left:0; }
-  .radialBtn.r-bottom{ top:36px; left:0; }
-  .radialBtn.r-left{ top:0; left:-50px; }
-  .radialBtn.r-right{ top:0; left:50px; }
-  .radialBtn.act-pass{ background:rgba(24,96,160,.96); }
-  .radialBtn.act-shoot{ background:rgba(160,118,22,.96); }
-  .radialBtn.act-cancel{ background:rgba(96,44,44,.94); }
-  .radialBtn.act-hold{ background:rgba(40,120,70,.96); }
-  @keyframes radPop{0%{opacity:0; transform:translate(-50%,-50%) scale(.5);}100%{opacity:1;}}
+  .piece.expanded{width:56%; max-width:48px; z-index:6;}
+  /* 移動先/パス先ゴースト（自分の予約コマンドの半透明プレビュー・仕込み中のみ）
+     既存駒（z-index:4）より手前に出し、点線の丸枠＋点滅で「そこに来る予定」だと重なっても分かるようにする。 */
+  .ghost{position:absolute; width:36%; max-width:30px; transform:translate(-50%,-50%);
+    opacity:.55; z-index:5; pointer-events:none;
+    border-radius:50%; box-shadow:0 0 0 2px rgba(120,220,255,.9); outline:2px dashed rgba(120,220,255,.95);
+    outline-offset:2px; animation:ghostBlink 1s ease-in-out infinite;}
+  .ghost img{width:100%; display:block; filter:drop-shadow(0 1px 1px rgba(0,0,0,.6)) drop-shadow(0 0 4px rgba(120,220,255,.9));}
+  .ghost.ghostBall{width:20%; max-width:16px; opacity:.65; box-shadow:0 0 0 2px rgba(255,225,77,.9); outline-color:rgba(255,225,77,.95);}
+  @keyframes ghostBlink{0%,100%{opacity:.55;} 50%{opacity:.95;}}
   .cell.stack{cursor:pointer;}
   .cell .stackbadge{position:absolute; right:2px; top:2px; z-index:7; pointer-events:none;
     background:#ffcf3f; color:#222; font-size:9px; font-weight:800;
     min-width:13px; height:13px; line-height:13px; text-align:center; border-radius:7px;}
   .piece.hasball::after{content:""; position:absolute; right:-3px; bottom:-3px;
     width:11px;height:11px; background:url(data:image/png;base64,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) center/contain no-repeat;}
-  .ballfree{position:absolute; width:16px;height:16px; z-index:5; pointer-events:none;
+  .ballfree{position:absolute; width:3.8%; height:2.4%; max-width:16px; max-height:16px;
+    transform:translate(-50%,-50%); z-index:5; pointer-events:none;
     background:url(data:image/png;base64,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) center/contain no-repeat; transition:all .25s;}
 
   .controls{display:flex; gap:8px; padding:0 10px; margin-top:10px;}
@@ -190,7 +198,6 @@
   .btn.active{background:linear-gradient(180deg,#fff0a0 0%,#ffd83f 100%); color:#3a2c05;
     box-shadow:0 2px 0 #b89000, inset 0 1px 0 rgba(255,255,255,.6);}
   .btn.ghost{background:linear-gradient(180deg,#2a3441 0%,#1e2730 100%); font-size:11px; font-weight:700;}
-  #actionBar{display:flex; padding:0 10px;}
   .log{margin:10px 10px 0; background:rgba(12,18,24,.85); border-radius:9px; padding:8px 10px;
     font-size:11px; line-height:1.5; color:#aebdc8; height:72px; overflow-y:auto;
     box-shadow:inset 0 1px 3px rgba(0,0,0,.5);}
@@ -211,7 +218,18 @@
     100%{transform:translate(-50%,-50%) translateX(-120%) skewX(-12deg); opacity:0;}
   }
   .cutin.play{animation:cutinIn var(--dur,1100ms) ease-in-out forwards;}
-  .cutin .cutin-band{position:absolute; inset:0; transform:skewX(0);} 
+  .cutin .cutin-band{position:absolute; inset:0; transform:skewX(0);}
+  /* 駒に紐づく演出（タックル/パスカット/ブロック/オフサイド）は該当セル座標に追従表示 */
+  .cutin.onpiece{max-width:120px; width:120px;}
+  .cutin.onpiece .cutin-label{font-size:14px; bottom:auto; top:50%; transform:translateY(-50%);
+    letter-spacing:0; text-shadow:0 1px 0 #000,0 0 8px #000;}
+  @keyframes cutinPop{
+    0%{transform:translate(-50%,-50%) scale(.4); opacity:0;}
+    22%{transform:translate(-50%,-50%) scale(1.12); opacity:1;}
+    80%{transform:translate(-50%,-50%) scale(1); opacity:1;}
+    100%{transform:translate(-50%,-50%) scale(1); opacity:0;}
+  }
+  .cutin.onpiece.play{animation:cutinPop var(--dur,900ms) ease-out forwards;}
   .legend{display:flex; flex-wrap:wrap; gap:8px 12px; margin-top:10px; font-size:10px; color:#9fb0bd;}
   .legend i{display:inline-block; width:10px;height:10px; border-radius:2px; margin-right:3px; vertical-align:-1px;}
 </style>
@@ -251,13 +269,12 @@
   <!-- ===== フィールド ===== -->
   <div class="boardWrap">
     <div class="board" id="board"></div>
-    <div class="fxLayer" id="fxLayer"></div>
+    <div id="selectFan"></div>
   </div>
 
+  <!-- Unity版準拠：選択は盤上ポップアップ（駒=移動／ボール=パス／シュートも扇内の選択肢）。下部はTURN ENDのみ -->
   <div class="controls">
-    <button class="btn primary" id="endTurnBtn">決定（実行）</button>
-    <button class="btn gold" id="shootBtn" disabled>シュート</button>
-    <button class="btn ghost" id="cancelSelBtn">選択解除</button>
+    <button class="btn primary" id="endTurnBtn">TURN END（決定）</button>
   </div>
   <div class="controls" style="margin-top:8px">
     <button class="btn ghost" id="resetBtn">配置リセット</button>
@@ -294,16 +311,29 @@ const CUTIN_LABEL={
   offside:'OFFSIDE', kickoff:'KICK OFF', start_turn:'', ballKeep:'KEEP', shootStop:'STOP'
 };
 let cutinQueue=[]; let cutinPlaying=false;
-function showCutin(key, dur){
+/* 第3引数 pos={x,y}（セル座標）を渡すと、その駒/マスに追従した小型演出になる。
+   省略時は従来通り画面中央のフル演出。 */
+function showCutin(key, dur, pos){
   return new Promise(resolve=>{
-    cutinQueue.push({key,dur:dur||1000,resolve});
+    cutinQueue.push({key,dur:dur||1000,resolve,pos:pos||null});
     if(!cutinPlaying) playNextCutin();
   });
+}
+/* 駒（セル座標）に紐づけて演出を出すショートカット */
+function showCutinAtPiece(key, dur, x, y){ return showCutin(key, dur, {x,y}); }
+/* セル(x,y)の中心をビューポート座標(px)に変換。render()の駒配置と同じ計算式を流用。 */
+function cellCenterViewport(x,y){
+  const ci=COLS.indexOf(x), ri=ROWS.indexOf(y);
+  if(ci<0||ri<0) return null;
+  const rect=boardEl.getBoundingClientRect();
+  if(!rect||!rect.width) return null;
+  const cw=rect.width/COLS.length, ch=rect.height/ROWS.length;
+  return { x: rect.left + (ci+0.5)*cw, y: rect.top + (ri+0.5)*ch };
 }
 function playNextCutin(){
   if(cutinQueue.length===0){ cutinPlaying=false; return; }
   cutinPlaying=true;
-  const {key,dur,resolve}=cutinQueue.shift();
+  const {key,dur,resolve,pos}=cutinQueue.shift();
   const layer=document.getElementById('cutinLayer');
   const el=document.createElement('div');
   el.className='cutin';
@@ -312,6 +342,11 @@ function playNextCutin(){
   if(src){ const img=document.createElement('img'); img.src=src; el.appendChild(img); }
   const lab=CUTIN_LABEL[key];
   if(lab){ const l=document.createElement('div'); l.className='cutin-label'; l.textContent=lab; el.appendChild(l); }
+  // 駒追従指定があればセル座標へ配置（取得できなければ中央フォールバック）
+  if(pos){
+    const vp=cellCenterViewport(pos.x,pos.y);
+    if(vp){ el.classList.add('onpiece'); el.style.left=vp.x+'px'; el.style.top=vp.y+'px'; }
+  }
   layer.appendChild(el);
   void el.offsetWidth;
   el.classList.add('play');
@@ -343,6 +378,8 @@ const BOARD = [
 const COLS=[-2,-1,0,1,2];
 const ROWS=[-3,-2,-1,0,1,2,3,4]; // 8段
 const MAX_PER_CELL=4;
+// ターン構成（GDD準拠）：前半15＋AT(0〜1)、後半15＋AT(1〜3)。1ターン=3分換算。
+const REGULAR_TURNS=15;
 
 /* ===== Unity版 CellDef.ActorNormalOffsetMap を移植 =====
    セル内 1〜4人の配置オフセット（セル幅%基準）。展開時は広げる。
@@ -353,11 +390,13 @@ const ACTOR_OFFSET={
   3:[[28,68],[72,68],[50,30]],
   4:[[28,68],[72,68],[28,32],[72,32]],
 };
+// 展開時：Unity版 ActorExpansionOffsetMap 準拠で大きく広げる（他マスは暗転するので重なってOK）。
+// セル四隅～やや外まで展開。盤は overflow:visible にして端でも切れないようにする。
 const ACTOR_OFFSET_EXP={
   1:[[50,50]],
-  2:[[22,50],[78,50]],
-  3:[[20,74],[80,74],[50,26]],
-  4:[[20,74],[80,74],[20,26],[80,26]],
+  2:[[2,50],[98,50]],                        // 左右いっぱい
+  3:[[-2,94],[102,94],[50,6]],               // 左下/右下/中央上
+  4:[[-2,94],[102,94],[-2,6],[102,6]],       // 四隅
 };
 
 /* ===== Unity版 DefaultTeamMaster をそのまま移植（自分=青） =====
@@ -431,6 +470,8 @@ const T_FAILED={
 const T_OFFSIDE=[[100,100,100],[100,50,0],[100,50,0]];
 // ファウル発生率（守備側の同マス人数→%）※Unityのマスタ値が手元に無いため代表値で近似
 const T_FOUL={1:10,2:20,3:30};
+// PK/FKは通常シュートと別系統の固定確率（HANDOFF「2. シュート周りの作り込み」準拠）
+const PK_PROB=75, FK_PROB=50;
 
 // Buffマスタ（BuffMaster.json）から必要値
 const BUFF={
@@ -508,6 +549,12 @@ function resolveFlyingPassPath(passPiece, ex, ey){
   }
   return {cut:false, cutAt:null, cutter:null};
 }
+/* 演出（カットイン）を出すべきか＝実際に敵との競り合い（奪取判定）が発生するケースかどうか。
+   経路上または着地/到達マスに敵駒が一体もいなければ「素通り」＝演出なし。 */
+function hasDefensiveContact(piece, route, tx, ty){
+  if(route.some(([x,y])=>piecesAt(x,y).some(q=>q.team!==piece.team))) return true;
+  return piecesAt(tx,ty).some(q=>q.team!==piece.team);
+}
 
 /* --- タックル成功率：TackleSuccessProbability（回避率を100から引く）--- */
 function calcTackleSuccess(hasBallPiece, tacklePiece){
@@ -522,17 +569,29 @@ function calcTackleSuccess(hasBallPiece, tacklePiece){
   const avoidance=clampProb(base+buff);
   return clampProb(100-avoidance); // タックル成功率＝100−回避率
 }
-/* --- シュート成功率：ShootSuccessProbability（PA/VA別）--- */
+/* --- シュートエリア判定（両チーム対応）---
+   青(b)は y<0 側の敵ゴール前、赤(r)は y>0 側の自ゴール前が攻撃エリア。
+   PA＝GA(中央) or PAセル、VA＝バイタルエリア。 */
+function shootArea(p){
+  const c=cellAt(p.x,p.y); if(!c) return '-';
+  if(p.team==='b'){
+    if(c.t==='oppga' || (c.t==='pa' && p.y<0)) return 'PA';
+    if(c.t==='va' && p.y<0) return 'VA';
+  }else{
+    if(c.t==='selfga' || (c.t==='pa' && p.y>0)) return 'PA';
+    if(c.t==='va' && p.y>0) return 'VA';
+  }
+  return '-';
+}
+/* --- シュート成功率：ShootSuccessProbability（PA/VA別）＝ステップ2のDFブロック抽選ゲート --- */
 function calcShoot(attackPiece){
-  const c=cellAt(attackPiece.x,attackPiece.y);
+  const area=shootArea(attackPiece);
   const enemyGK=pieces.find(p=>p.team!==attackPiece.team && p.posType==='gk');
   const gkCost=enemyGK?pieceCost(enemyGK):1;
   const cellPieces=piecesAt(attackPiece.x,attackPiece.y);
   const mates=cellPieces.filter(q=>q.team===attackPiece.team && q.id!==attackPiece.id);
   const enemies=cellPieces.filter(q=>q.team!==attackPiece.team);
-  // ペナルティエリア（自陣から見て敵ゴール側のGA/PA）
-  const isPA=(c.t==='oppga'); const isVA=(c.t==='va' && attackPiece.y<0); // 敵側VA
-  if(isPA){
+  if(area==='PA'){
     let base=T_PA_SHOOT[costToIndex(gkCost)][costToIndex(pieceCost(attackPiece))];
     let buff=0;
     if(attackPiece.posType==='fw') buff+=BUFF.PenaltyAreaShoot.OwnFW;
@@ -540,7 +599,7 @@ function calcShoot(attackPiece){
     buff+=enemies.length*BUFF.PenaltyAreaShoot.EnemyDebuff;
     return {area:'PA', prob:clampProb(base+buff)};
   }
-  if(isVA){
+  if(area==='VA'){
     let base=T_VA_SHOOT[costToIndex(gkCost)][costToIndex(pieceCost(attackPiece))];
     let buff=0;
     if(attackPiece.posType==='fw') buff+=BUFF.VitalAreaShoot.OwnFW;
@@ -552,34 +611,6 @@ function calcShoot(attackPiece){
 function pieceCost(p){ return p.cost||1; }
 function rollPercent(p){ return Math.random()*100 < p; }
 
-/* --- ゴール方向の1マス前のマス（遮蔽判定用）--- */
-function goalFrontCell(p){
-  const dir=(p.team==='b')?-1:+1;   // 青は敵ゴール(y=-3)方向、赤は自ゴール(y=4)方向
-  const ny=p.y+dir;
-  if(ny<=-3||ny>=4) return null;    // ゴールラインの外は対象外
-  return {x:p.x, y:ny};
-}
-/* --- シュート解決：DFブロック → GKセーブ の二段判定（GDD/おまかせ仕様）---
-   1) ゴール前を敵が遮蔽していたら必ずブロック
-   2) 同マスの敵DFによるブロック抽選
-   3) 抜けたら prob（=得点率）でゴール、外れたらGKセーブ */
-function resolveShoot(p, prob){
-  const enemies=piecesAt(p.x,p.y).filter(q=>q.team!==p.team);
-  const front=goalFrontCell(p);
-  if(front && piecesAt(front.x,front.y).some(q=>q.team!==p.team)){
-    return {result:'block', reason:'ゴール前を敵が遮蔽'};
-  }
-  const enemyDF=enemies.filter(q=>q.posType==='df').length;
-  const blockP=clampProb(enemyDF*30);
-  if(blockP>0 && rollPercent(blockP)){
-    return {result:'block', reason:`敵DFがブロック（${blockP}%）`};
-  }
-  if(rollPercent(prob)) return {result:'goal'};
-  return {result:'save'};
-}
-const PK_FIXED=75; // PK固定成功率（GDD簡易）
-const FK_FIXED=50; // FK固定成功率（GDD簡易）
-
 /* --- PK/FK/CK 成功率 --- */
 function calcPK(att,gk){ return clampProb(T_PK[costToIndex(pieceCost(att))][costToIndex(pieceCost(gk))]); }
 function calcFK(att,gk){ return clampProb(T_FK[costToIndex(pieceCost(att))][costToIndex(pieceCost(gk))]); }
@@ -590,60 +621,39 @@ function calcFoul(defNum){ return T_FOUL[Math.min(Math.max(defNum,1),3)]||0; }
 function failedToCK(kind, gkCost){ const a=T_FAILED[kind]; return a?clampProb(a[costToIndex(gkCost)]):0; }
 
 /* --- オフサイド判定（Unity GetOffsideEntry を簡略移植）---
-   offsideLine/before/after のY位置関係から確率を引く */
-function relLine(offsideLine, line){ // 0=Up(offsideより前) 1=Side 2=Down
-  if(offsideLine===line)return 1; return offsideLine>line?2:0;
+   offsideLine/before/after のY位置関係から確率を引く。
+   ★方向補正：攻撃方向 dir（青=-1で-Y側ゴール, 赤=+1で+Y側ゴール）を明示分岐する
+   （calcShootと同じ「チーム別に座標系を分岐」パターン。旧実装は片方向決め打ちで青が常時100%だった）。
+   相対位置: 0=Up(ゴール側=オフサイド側) / 1=Side(ライン上) / 2=Down(自陣側=オンサイド) */
+function attackDir(team){ return team==='b' ? -1 : 1; } // 青:-Yへ攻める / 赤:+Yへ攻める
+function relLine(offsideLine, y, dir){
+  const d = dir<0 ? (offsideLine - y) : (y - offsideLine); // ゴール方向に進むほど d>0
+  if(d===0) return 1;      // ライン上
+  return d>0 ? 0 : 2;      // ゴール側=Up(オフサイド側) / 自陣側=Down(オンサイド)
 }
-function calcOffside(offsideLine, beforeY, afterY){
-  const rb=relLine(offsideLine,beforeY), ra=relLine(offsideLine,afterY);
+function calcOffside(offsideLine, beforeY, afterY, dir){
+  const rb=relLine(offsideLine,beforeY,dir), ra=relLine(offsideLine,afterY,dir);
   return clampProb(T_OFFSIDE[rb][ra]);
 }
-/* --- ライブのオフサイド統合 ---
-   オフサイドライン＝相手守備の後ろから2番目のy。前方へのパスをラインより前で受けたら判定。 */
-function offsideLineFor(team){
-  const def=pieces.filter(p=>p.team!==team);
-  if(def.length===0) return null;
-  const sorted = team==='b' ? def.slice().sort((a,b)=>a.y-b.y)   // 青はy小さい方が前進
-                            : def.slice().sort((a,b)=>b.y-a.y);  // 赤はy大きい方が前進
-  return (sorted[1]||sorted[0]).y;
+/* オフサイドライン＝守備側の後方から2番目の守備者のY（相手DFライン基準／GDD準拠）。
+   青が守る自ゴール=y=4(大)側, 赤が守る自ゴール=y=-3(小)側が最後方。 */
+function offsideLineFor(defTeam){
+  const defs=pieces.filter(p=>p.team===defTeam);
+  if(defs.length===0) return null;
+  const sorted = defTeam==='b'
+    ? defs.slice().sort((a,b)=>b.y-a.y)   // 青ゴール(大y)に近い順
+    : defs.slice().sort((a,b)=>a.y-b.y);  // 赤ゴール(小y)に近い順
+  return (sorted[1]||sorted[0]).y;         // 後方から2番目（GK＝最後方の次）
 }
-function isForwardY(team, fromY, toY){ return team==='b' ? toY<fromY : toY>fromY; }
-function isBeyondLine(team, y, line){ return team==='b' ? y<line : y>line; }
-/* パス成功時のオフサイド判定。成立したら位置戻し＋守備側ボールにして true を返す */
-async function checkOffsideOnReceive(passer, receiver){
-  const line=offsideLineFor(passer.team);
+/* パス成立時のオフサイド判定：受け手が相手陣で守備ラインより前なら成立確率を返す。
+   受け手は静止して受けるため before=after=受け手Y（表対角=前100/線上50/後0）。 */
+function isOffsidePass(passer, receiver){
+  const dir=attackDir(passer.team);
+  const inOpponentHalf = dir<0 ? (receiver.y<0) : (receiver.y>0);
+  if(!inOpponentHalf) return false;                       // 自陣半分は対象外
+  const line=offsideLineFor(passer.team==='b'?'r':'b');
   if(line==null) return false;
-  if(!isForwardY(passer.team, passer.y, receiver.y)) return false;   // 前方へのパスのみ
-  if(!isBeyondLine(passer.team, receiver.y, line)) return false;     // ラインより前で受けたときのみ
-  const op=calcOffside(line, passer.y, receiver.y);
-  if(!rollPercent(op)) return false;
-  await showCutin('offside',1100);
-  flashOnPiece(receiver,'OFFSIDE');
-  log(`オフサイド！ ${label(receiver)} は位置を戻し、守備側ボール（${op}%）`);
-  receiver.x = (receiver.sx!=null?receiver.sx:receiver.x);          // ターン開始位置へ戻す
-  receiver.y = (receiver.sy!=null?receiver.sy:receiver.y);
-  const dgk=pieces.find(q=>q.team!==passer.team && q.posType==='gk');
-  ball = dgk ? {target:'piece',pieceId:dgk.id,x:null,y:null}
-             : {target:'cell',pieceId:null,x:receiver.x,y:receiver.y};
-  return true;
-}
-/* --- 演出を駒の上に表示（render()で消えない fxLayer に重ねる）--- */
-function flashOnPiece(piece, text){
-  const layer=document.getElementById('fxLayer');
-  if(!layer||!boardEl) return;
-  if(COLS.indexOf(piece.x)<0||ROWS.indexOf(piece.y)<0) return;
-  layer.style.left=boardEl.offsetLeft+'px';
-  layer.style.top=boardEl.offsetTop+'px';
-  layer.style.width=boardEl.offsetWidth+'px';
-  layer.style.height=boardEl.offsetHeight+'px';
-  const ctr=cellCenter(piece.x,piece.y);
-  const fx=document.createElement('div');
-  fx.className='fxBadge';
-  fx.textContent=text;
-  fx.style.left=ctr.cx+'%';
-  fx.style.top=cellRect(piece.x,piece.y).top+'%';
-  layer.appendChild(fx);
-  setTimeout(()=>{ fx.remove(); }, 1100);
+  return rollPercent(calcOffside(line, receiver.y, receiver.y, dir));
 }
 
 /* --- タックル一連の解決：Unity StateBattleCalculate を移植 ---
@@ -655,25 +665,20 @@ function resolveTackle(hasBallPiece, tackler){
   const foulP=calcFoul(defNum);
   if(rollPercent(foulP)){
     out.push(`ファウル発生（守備${defNum}人, ${foulP}%）`);
-    const gk=pieces.find(p=>p.team!==hasBallPiece.team && p.posType==='gk');
-    const gkCost=gk?pieceCost(gk):1;
     const c=cellAt(hasBallPiece.x,hasBallPiece.y);
-    // ペナルティエリア内ならPK、外ならFK
-    const inPA=(c.t==='oppga'||c.t==='pa'&&hasBallPiece.y<0);
+    // ペナルティエリア内ならPK、外ならFK（PK/FKは固定確率＝ステップ0）
+    const inPA=(c.t==='oppga'||c.t==='selfga'||(c.t==='pa'&&hasBallPiece.y<0)||(c.t==='pa'&&hasBallPiece.y>0));
     if(inPA){
-      const pkP=PK_FIXED;
-      if(rollPercent(pkP)){ out.push(`PK成功（${pkP}%）→ ゴール！`); return {goal:true,log:out}; }
-      out.push(`PK失敗（${pkP}%）`);
-      const ckP=failedToCK('PK',gkCost);
-      if(rollPercent(ckP)){ out.push(`こぼれ球→CK（${ckP}%）`); }
+      if(rollPercent(PK_PROB)){ out.push(`PK成功（${PK_PROB}%）→ ゴール！`); return {goal:true,log:out}; }
+      // PK失敗＝GKセーブ扱い。こぼれ球は発生させず即リスタート
+      out.push(`PK失敗（${PK_PROB}%）→ GKセーブ`);
+      return {goal:false,turnover:true,restart:true,log:out};
     }else{
-      const fkP=FK_FIXED;
-      if(rollPercent(fkP)){ out.push(`FK成功（${fkP}%）→ ゴール！`); return {goal:true,log:out}; }
-      out.push(`FK失敗（${fkP}%）`);
-      const ckP=failedToCK('FK',gkCost);
-      if(rollPercent(ckP)){ out.push(`こぼれ球→CK（${ckP}%）`); const cP=calcCK(hasBallPiece,gk||hasBallPiece); if(rollPercent(cP)){out.push(`CK成功（${cP}%）→ ゴール！`);return{goal:true,log:out};} out.push(`CK失敗（${cP}%）`);}
+      if(rollPercent(FK_PROB)){ out.push(`FK成功（${FK_PROB}%）→ ゴール！`); return {goal:true,log:out}; }
+      // FK失敗＝壁に当たった想定。シューター位置付近にこぼれ球
+      out.push(`FK失敗（${FK_PROB}%）→ 壁`);
+      return {goal:false,turnover:true,rebound:{x:hasBallPiece.x,y:hasBallPiece.y},log:out};
     }
-    return {goal:false,turnover:true,log:out};
   }
   // 2) 通常タックル成功判定
   const tackP=calcTackleSuccess(hasBallPiece,tackler);
@@ -695,31 +700,6 @@ function ballPos(){
 }
 function pieceById(id){return pieces.find(p=>p.id===id);}
 function ballHolder(){return ball.target==='piece'?pieceById(ball.pieceId):null;}
-/* --- フリーボール（こぼれ球）の所有者決定 ---
-   ボールがマスに転がっている場合、そのマスにいる駒が確保。
-   複数いる場合はコストの高い方が拾う（Unity/GDD準拠）。誰もいなければ転がったまま。 */
-function resolveFreeBall(){
-  if(ball.target!=='cell') return;
-  const here=piecesAt(ball.x,ball.y);
-  if(here.length===0) return;
-  here.sort((a,b)=> pieceCost(b)-pieceCost(a)); // コスト降順
-  const owner=here[0];
-  // クリア処理：GK/DFが自陣でこぼれ球を確保したら前方へ蹴り出す
-  const ownHalf = owner.team==='b' ? owner.y>0 : owner.y<0;
-  if((owner.posType==='gk'||owner.posType==='df') && ownHalf){
-    const dir = owner.team==='b' ? -1 : +1;       // 前進方向
-    let ty = owner.y + dir*3;
-    if(ty<=-3) ty=-2; if(ty>=4) ty=3;             // ゴールマスは避ける
-    if(cellAt(0,ty)){
-      ball={target:'cell',pieceId:null,x:0,y:ty};
-      flashOnPiece(owner,'CLEAR');
-      log(`→ ${owner.team==='b'?'青':'赤'}${owner.posType.toUpperCase()} が前方へクリア（(0,${ty})へ）`);
-      return;
-    }
-  }
-  ball={target:'piece',pieceId:owner.id,x:null,y:null};
-  log(`こぼれ球を ${owner.team==='b'?'青':'赤'}${owner.posType.toUpperCase()}(コスト${pieceCost(owner)}) が確保`);
-}
 
 /* ===== 相手AI（赤）：Unity版 StmBattleRandomAICommandCalculate を移植 =====
    各駒ごとに 止まる/移動/パス/スルーパス/シュート を抽選して実行。
@@ -791,11 +771,16 @@ function buildTeams(){
   ball={target:'piece',pieceId:ko.id,x:null,y:null};
 }
 
-let state={turn:1,half:'前半',addedTime:(Math.random()<0.5?0:1),scoreSelf:0,scoreOpp:0,
+let state={turn:1,half:'前半',scoreSelf:0,scoreOpp:0,
   selected:null,   // 選択中の駒
   mode:'idle',     // idle / move / pass
   expanded:null,   // 展開中のマス {x,y}
-  phase:'input'};  // input（仕込み中）/ replay（再生中）
+  atFirst:null,    // 前半AT（0〜1）※初回に一度だけ抽選し固定
+  atSecond:null,   // 後半AT（1〜3）※初回に一度だけ抽選し固定
+  matchOver:false, // フルタイム到達
+  ballSelected:false, // ボールトークンを選択中（パスモード）
+  popup:null,      // 駒/ボール選択の扇ポップアップ対象マス {x,y}（開いている間はハイライト非表示）
+  phase:'input'};  // input（仕込み中）/ replay（再生中）/ ended（試合終了）
 
 /* ===== 同時ターン制：仕込んだコマンドのキュー =====
    Unity版 BattleOperationMessageModel に相当。
@@ -812,54 +797,12 @@ function hasCommand(pieceId){ return myCommands.some(c=>c.pieceId===pieceId); }
 let chainHolderId=null;   // 仕込み上、現在ボールを持っている駒
 let chainPassCount=0;     // このターンに仕込んだパス回数（Unity MoveNum 相当）
 let chainMovedIds=new Set(); // このターンに「移動」を仕込んだ駒（=もうパスを受けても蹴れるが移動はできない）
+let chainPassedIds=new Set(); // このターンに「パス／スルーパス」でボールを離した駒（=もう移動/ドリブルは予約不可）
 
 /* ===== 描画 ===== */
 const boardEl=document.getElementById('board');
 function cellAt(x,y){return BOARD.find(c=>c.x===x&&c.y===y);}
 function piecesAt(x,y){return pieces.filter(p=>p.x===x&&p.y===y);}
-
-/* ===== 盤目キャリブレーション：フィールド画像の白ライン実測に合わせてセルを配置 =====
-   タッチライン x:4.5%〜95.3%、ゴールライン y:5.3%〜92.0%。
-   競技エリアは 5列×6行(y=-2..3)で均等割り（ペナルティ/ハーフラインが境界に一致）。
-   y=-3/4 はゴール（枠の外）。すべての座標→画面%変換をここに集約する。 */
-const FIELD={L:4.5, R:95.3, T:5.3, B:92.0};
-function cellRect(x,y){
-  const colW=(FIELD.R-FIELD.L)/5;
-  const left=FIELD.L+COLS.indexOf(x)*colW;
-  let top,height;
-  if(y===-3){ top=0; height=FIELD.T; }
-  else if(y===4){ top=FIELD.B; height=100-FIELD.B; }
-  else { const rowH=(FIELD.B-FIELD.T)/6; top=FIELD.T+(y+2)*rowH; height=rowH; }
-  return {left, top, width:colW, height};
-}
-function cellCenter(x,y){ const r=cellRect(x,y); return {cx:r.left+r.width/2, cy:r.top+r.height/2}; }
-
-/* 予約した操作の可視化（仕込み中のみ）：移動/ドリブルは行き先に残像(ゴースト)＋経路点線、
-   パス/スルーパス/シュートは経路の点線を表示。「どう操作したか」を一目で分かるようにする。 */
-function renderPlan(){
-  if(state.phase!=='input' || !myCommands.length) return;
-  const W=boardEl.offsetWidth||300, H=boardEl.offsetHeight||486;
-  myCommands.forEach(cmd=>{
-    const p=pieceById(cmd.pieceId); if(!p) return;
-    const from=cellCenter(p.x,p.y);
-    const to=(cmd.type==='shoot') ? cellCenter(0, p.team==='b'?-3:4) : cellCenter(cmd.tx,cmd.ty);
-    // 経路の点線（divを回転）
-    const x1=from.cx/100*W, y1=from.cy/100*H, x2=to.cx/100*W, y2=to.cy/100*H;
-    const dx=x2-x1, dy=y2-y1, len=Math.hypot(dx,dy), ang=Math.atan2(dy,dx)*180/Math.PI;
-    const line=document.createElement('div'); line.className='planLine plan-'+cmd.type;
-    line.style.left=x1+'px'; line.style.top=y1+'px'; line.style.width=len+'px';
-    line.style.transform=`rotate(${ang}deg)`;
-    boardEl.appendChild(line);
-    // 移動/ドリブルは行き先に残像（ゴースト駒）
-    if(cmd.type==='move'||cmd.type==='dribble'){
-      const g=document.createElement('div'); g.className='ghostPiece';
-      g.style.left=to.cx+'%'; g.style.top=to.cy+'%';
-      const im=document.createElement('img'); im.src=IMG[p.posType+'_'+p.team]; g.appendChild(im);
-      if(cmd.type==='dribble'){ const gb=document.createElement('span'); gb.className='gball'; g.appendChild(gb); }
-      boardEl.appendChild(g);
-    }
-  });
-}
 
 function render(){
   boardEl.innerHTML='';
@@ -868,19 +811,16 @@ function render(){
     const ci=COLS.indexOf(c.x), ri=ROWS.indexOf(c.y);
     const el=document.createElement('div');
     el.className='cell '+c.t;
-    const rect=cellRect(c.x,c.y);
-    el.style.left=rect.left+'%'; el.style.top=rect.top+'%';
-    el.style.width=rect.width+'%'; el.style.height=rect.height+'%';
+    el.style.left=(ci*cw)+'%'; el.style.top=(ri*ch)+'%';
+    el.style.width=cw+'%'; el.style.height=ch+'%';
     if(c.label){const l=document.createElement('span');l.className='areaLabel';l.textContent=c.label;el.appendChild(l);}
     if(state.selected){
+      // 到達可能マス／パス先マスを盤上に直接ハイライト（各マスに成功率%を表示）
       if(state.mode==='move' && isMovable(state.selected,c.x,c.y)) el.classList.add('movable');
       if(state.mode==='pass' && isPassable(state.selected,c.x,c.y)){
         el.classList.add('passable');
-        // 成功率を表示
         const mate=piecesAt(c.x,c.y).find(q=>q.team===state.selected.team);
-        let pr;
-        if(mate) pr=calcLandingPass(state.selected,mate,c.x,c.y);
-        else pr=calcFlyingPass(state.selected,c.x,c.y);
+        const pr = mate?calcLandingPass(state.selected,mate,c.x,c.y):calcFlyingPass(state.selected,c.x,c.y);
         const lab=document.createElement('span');
         lab.style.cssText='position:absolute;right:2px;bottom:1px;font-size:9px;font-weight:700;color:#bfefff;text-shadow:0 0 3px #000';
         lab.textContent=pr+'%';
@@ -890,84 +830,176 @@ function render(){
     }
     el.addEventListener('click',()=>onCellClick(c.x,c.y));
     const ps=piecesAt(c.x,c.y);
-    const isExpanded=state.expanded&&state.expanded.x===c.x&&state.expanded.y===c.y;
+    // 選択の扇ポップアップ中：対象マスは扇で描くので通常駒はスキップ、他マスは暗転
+    const inPopup = state.popup && state.popup.x===c.x && state.popup.y===c.y;
+    const dimOthers = state.popup && !inPopup;
     if(ps.length>1) el.classList.add('stack');
-    if(ps.length){
+    if(ps.length && !inPopup){
       const pc=document.createElement('div'); pc.className='pieces';
-      const offMap=isExpanded?ACTOR_OFFSET_EXP:ACTOR_OFFSET;
-      const offs=offMap[Math.min(ps.length,4)]||ACTOR_OFFSET[4];
+      const offs=ACTOR_OFFSET[Math.min(ps.length,4)]||ACTOR_OFFSET[4];
       ps.forEach((p,i)=>{
         const pe=document.createElement('div');
         const hasBall = state.phase==='input'
           ? (chainHolderId===p.id)
           : (ball.target==='piece'&&ball.pieceId===p.id);
         const isSel=(state.selected&&state.selected.id===p.id);
-        // ボール選択(パス)／ドリブル選択(保持駒の移動)時は、駒とボールを大きく表示（Unity版準拠）
-        const isHolderSel = isSel && hasBall && state.phase==='input' && (state.mode==='pass'||state.mode==='move');
-        pe.className='piece'+(hasBall?' hasball':'')+(isSel?' psel':'')+(isHolderSel?' selbig':'')+(isExpanded?' expanded':'')+(hasCommand(p.id)?' reserved':'');
+        pe.className='piece'+(hasBall?' hasball':'')+(isSel?' psel':'')+(hasCommand(p.id)?' reserved':'')+(dimOthers?' dimmed':'');
         const o=offs[i]||offs[offs.length-1];
         pe.style.left=o[0]+'%'; pe.style.top=o[1]+'%';
         const img=document.createElement('img');
         img.src=IMG[p.posType+'_'+p.team];
         pe.appendChild(img);
         pe.addEventListener('click',ev=>{ev.stopPropagation();onPieceClick(p,c.x,c.y);});
-        // 保持駒の上にタップ可能なボール（Unity版：駒とボールは別のタップ対象）
-        if(hasBall && p.team==='b' && state.phase==='input'){
-          const bt=document.createElement('button');
-          bt.className='balltap'+(state.mode==='pass'&&isSel?' active':'')+(isHolderSel?' big':'');
-          bt.title='ボール（タップでパス/シュート）';
-          bt.addEventListener('click',ev=>{ev.stopPropagation();onBallClick(p);});
-          pe.appendChild(bt);
-        }
         pc.appendChild(pe);
       });
       el.appendChild(pc);
-      // 複数駒バッジ（人数表示）。未展開時のみ
-      if(ps.length>1 && !isExpanded){
+      if(ps.length>1){
         const bd=document.createElement('span'); bd.className='stackbadge'; bd.textContent=ps.length;
         el.appendChild(bd);
+      }
+    }
+    // 保持駒を「選択中」のときだけ、パス用ボールトークンを表示（タップでパスモード）
+    if(state.phase==='input' && !state.popup && state.selected){
+      const h=chainHolder();
+      if(h && h.team==='b' && h.id===state.selected.id && h.x===c.x && h.y===c.y){
+        const bt=document.createElement('div');
+        bt.className='ballToken'+(state.ballSelected?' sel':'');
+        bt.style.left='74%'; bt.style.top='16%';
+        const bimg=document.createElement('img'); bimg.src=IMG.ball||IMG.have_ball; bt.appendChild(bimg);
+        bt.addEventListener('click',ev=>{ ev.stopPropagation(); selectBall(); });
+        el.appendChild(bt);
       }
     }
     boardEl.appendChild(el);
   });
   // フリーボール（マスに単独で存在する状態）を描画
   if(ball.target==='cell'){
-    const ctr=cellCenter(ball.x,ball.y);
+    const ci=COLS.indexOf(ball.x), ri=ROWS.indexOf(ball.y);
     const b=document.createElement('div'); b.className='ballfree';
-    b.style.left=`calc(${ctr.cx}% - 8px)`;
-    b.style.top=`calc(${ctr.cy}% - 8px)`;
+    b.style.left=((ci+0.5)*cw)+'%';
+    b.style.top=((ri+0.5)*ch)+'%';
     boardEl.appendChild(b);
   }
-  renderPlan(); // 予約した操作（移動先の残像・経路）を描画
+  // 移動先/パス先ゴースト（自分=青の予約コマンドのみ・仕込み中のみ。相手AIの予約には出さない）
+  if(state.phase==='input'){
+    myCommands.forEach(cmd=>{
+      const p=pieceById(cmd.pieceId); if(!p) return;
+      const ci=COLS.indexOf(cmd.tx), ri=ROWS.indexOf(cmd.ty);
+      if(ci<0||ri<0) return;
+      // マス中心からわずかにずらして描画し、既存駒と完全に重ならないようにする（視認性対策）。
+      const gx=(ci+0.68)*cw, gy=(ri+0.32)*ch;
+      const g=document.createElement('div');
+      const img=document.createElement('img');
+      if(cmd.type==='move'||cmd.type==='dribble'){
+        g.className='ghost'; img.src=IMG[p.posType+'_'+p.team];
+      }else if(cmd.type==='pass'||cmd.type==='throughpass'){
+        g.className='ghost ghostBall'; img.src=IMG.ball||IMG.have_ball;
+      }else{ return; } // shoot等はゴースト対象外
+      g.style.left=gx+'%'; g.style.top=gy+'%';
+      g.appendChild(img);
+      boardEl.appendChild(g);
+    });
+  }
   document.getElementById('scoreSelf').textContent=state.scoreSelf;
   document.getElementById('scoreOpp').textContent=state.scoreOpp;
   document.getElementById('turnInfo').textContent=`ターン ${state.turn}`;
   // ChessClock：1ターン3分経過（GDD）。針は90分で一周。前半45分で半周。
+  // AT中はサッカー中継風に「45+N」「90+N」表記（Nは経過ATターン数）。針は超過して回り続けてよい。
   {
-    const REG_TURNS=15;
-    const baseMin = (state.half==='後半') ? 45 : 0;
-    const reg = Math.min(state.turn, REG_TURNS);     // 正規内ターン(1..15)
-    const atT = Math.max(0, state.turn - REG_TURNS); // AT内ターン(0..)
-    const regMin = baseMin + (reg-1)*3;              // 正規の経過分
-    const halfEndMin = baseMin + 45;                 // 45（前半終了）or 90（試合終了）
-    const text = atT>0 ? (halfEndMin + "+" + (atT*3)) : ("" + regMin);
-    document.getElementById('matchClock').textContent = text + "'";
+    const inAT = state.turn > REGULAR_TURNS;               // レギュラー15ターン超過＝AT
+    const halfBaseMin = (state.half==='後半') ? 45 : 0;
+    const elapsedMin = halfBaseMin + (state.turn-1) * 3;   // 開始時点の経過分（ATでは45/90を超える）
+    let minText;
+    if(inAT){
+      const n = state.turn - REGULAR_TURNS;               // AT経過ターン数
+      minText = (state.half==='後半' ? 90 : 45) + '+' + n;
+    }else{
+      const cap = (state.half==='後半') ? 90 : 45;
+      minText = Math.min(elapsedMin, cap) + "'";
+    }
+    document.getElementById('matchClock').textContent = minText;
     const halfEl = document.getElementById('halfInfo');
-    if(halfEl) halfEl.textContent = state.half + (atT>0 ? ' (AT)' : '');
+    if(halfEl) halfEl.textContent = state.half + (inAT ? ' AT' : '');
     const hand = document.getElementById('clockHand');
-    const handMin = atT>0 ? halfEndMin : regMin;     // ATは45/90の位置で止める
-    if(hand) hand.style.transform = `translate(-50%,-100%) rotate(${(Math.min(handMin,90)/90)*360}deg)`;
+    if(hand) hand.style.transform = `translate(-50%,-100%) rotate(${(elapsedMin/90)*360}deg)`;
   }
   const hint=document.getElementById('modeHint');
   if(state.phase==='replay')hint.textContent='▶ リプレイ再生中…';
-  else if(state.mode==='move')hint.textContent='移動モード：黄色いマスへ移動を予約（ボール保持駒はドリブル）';
-  else if(state.mode==='pass')hint.textContent='パスモード：青い丸/味方へパス、またはシュートボタン';
-  else hint.textContent=`仕込み中（予約 ${myCommands.length}件）：駒タップ=移動 / ボールタップ=パス・シュート → 決定`;
-  // シュートボタンは「ボール選択中(パスモード)」で有効（Unity OnSelectBall→Shoot有効化）
-  const sb=document.getElementById('shootBtn');
-  if(sb){ const h=chainHolder(); sb.disabled = !(state.phase==='input' && state.mode==='pass' && h && h.team==='b'); }
+  else if(state.mode==='pass')hint.textContent='パス：青い丸のマス（味方/空マス）をタップ／ボールをタップした際の選択肢からシュートも可能';
+  else if(state.mode==='move')hint.textContent='移動/ドリブル：黄色いマスをタップ／ボールをタップでパスに切替';
+  else hint.textContent='駒をタップ＝移動、ボールをタップ＝パス／シュート（Unity版準拠）。仕込んだら TURN END';
+  renderSelectFan(); // 駒/ボール選択の扇ポップアップ
 }
 
+/* ===== 駒/ボール選択の扇ポップアップ（マス中心から放射状）=====
+   選択ステップ専用。state.popup がセットされている間だけ表示し、
+   この時点では state.selected は null＝移動/パス範囲のハイライトは一切出さない。 */
+function buildSelectItems(x,y){
+  const own=piecesAt(x,y).filter(p=>p.team==='b');
+  // ボールは常に独立項目にする（バッジ重ね表示は廃止）。保持球は保持駒の直後に置いて隣接させる。
+  const holder=chainHolder();
+  const heldBallHere  = holder && holder.team==='b' && holder.x===x && holder.y===y;
+  const looseBallHere = ball.target==='cell' && ball.x===x && ball.y===y;
+  const items=[];
+  own.forEach(p=>{
+    items.push({type:'piece',piece:p});
+    if(heldBallHere && holder.id===p.id){
+      items.push({type:'ball', held:true, ownerId:p.id}); // 保持駒の隣
+      // シュート可能エリアなら、ボールの隣に「シュート」も選択肢として並べる（下部固定ボタンを廃止した代替）
+      if(calcShoot(holder).area!=='-') items.push({type:'shoot', ownerId:p.id});
+    }
+  });
+  if(looseBallHere && !heldBallHere && own.length>0) items.push({type:'ball', held:false});
+  return items;
+}
+function renderSelectFan(){
+  const layer=document.getElementById('selectFan'); if(!layer) return;
+  layer.innerHTML='';
+  if(!state.popup || state.phase!=='input') return;
+  const {x,y}=state.popup;
+  const items=buildSelectItems(x,y);
+  if(items.length<1) return;
+  const pci=COLS.indexOf(x), pri=ROWS.indexOf(y);
+  if(pci<0||pri<0) return;
+  const cw=100/COLS.length, ch=100/ROWS.length;
+  const cx=(pci+0.5)*cw, cy=(pri+0.5)*ch;   // マス中心（%）＝弧の起点
+  const k=cw/ch;                             // 縦横比補正（視覚的に弧に）
+  const R=17;                                // 半径（水平%）
+  const N=items.length;
+  // 上側(-90°)を中心に左右へ開く弧（-60°〜+60°）に均等配置。2項目でも斜めに開く（真上/真下の直線にしない）。
+  const relStart=-60, relEnd=60;
+  const posOf=(i)=>{
+    const rel = N===1 ? 0 : relStart + (relEnd-relStart)*(i/(N-1));
+    const a=(-90 + rel)*Math.PI/180;
+    return { ox: cx + R*Math.cos(a), oy: cy + (R/k)*Math.sin(a) };
+  };
+  items.forEach((it,i)=>{
+    const {ox,oy}=posOf(i);
+    const el=document.createElement('div');
+    el.className='selOpt'+(it.type==='ball'?' ball':'')+(it.type==='shoot'?' shoot':'');
+    el.style.left=ox+'%'; el.style.top=oy+'%';
+    el.style.animationDelay=(i*35)+'ms';
+    if(it.type==='shoot'){
+      const sp=document.createElement('span'); sp.textContent='SHOOT'; el.appendChild(sp);
+    }else{
+      const img=document.createElement('img');
+      img.src = it.type==='ball' ? (IMG.ball||IMG.have_ball) : IMG[it.piece.posType+'_'+it.piece.team];
+      el.appendChild(img);
+    }
+    el.title = it.type==='ball' ? 'ボール' : (it.type==='shoot' ? 'シュート' : label(it.piece));
+    // タップ→ポップ拡大→その後に選択確定（範囲ハイライト表示）／シュートは即実行へ
+    el.addEventListener('click',ev=>{
+      ev.stopPropagation();
+      el.classList.add('pop');
+      setTimeout(()=>{
+        if(it.type==='ball') selectBallItem(x,y);
+        else if(it.type==='shoot'){ const h=pieceById(it.ownerId); if(h) tryShoot(h); }
+        else selectPieceItem(it.piece);
+      }, 200);
+    });
+    layer.appendChild(el);
+  });
+}
 
 /* ===== Unity版 PieceMoveLimitDef を移植 =====
    上下左右1マス。コスト3のみ斜め1マスも可。
@@ -980,6 +1012,8 @@ function moveLimitList(cost){
 function isMovable(p,x,y){
   if(p.team!=='b')return false;
   if(chainMovedIds.has(p.id))return false;  // このターン移動を仕込み済みなら不可
+  // パス／スルーパス予約済みの駒でも、選び直して移動/ドリブルへ変更することは許可する
+  // （movePiece側で実際のボール保持状況から常に正しい種別=move/dribbleへ補正するため、混同は起きない）
   const c=cellAt(x,y); if(!c)return false;
   if(c.t==='selfgoal'||c.t==='oppgoal')return false;
   if(p.sx===x&&p.sy===y)return false;
@@ -1009,78 +1043,104 @@ function isPassable(p,x,y){
 }
 
 function onPieceClick(p,cx,cy){
-  // パスモード中に味方駒タップ＝その駒へパス（受け手が複数いるマスでも個別指定可）
-  if(state.mode==='pass' && state.selected && p.team===state.selected.team && isPassable(state.selected,p.x,p.y)){
-    doPassToPiece(state.selected,p);return;
+  // 駒選択中に、行動先として有効なマス（相手駒/自駒が既に乗っているマスも含む）をタップした場合は
+  // そちらを優先する。個別駒のクリックハンドラがマスのクリックを奪ってしまう（stopPropagation）ため、
+  // ここでonCellClickと同じ判定をこちらでも行う。
+  if(state.selected){
+    if(state.mode==='pass' && isPassable(state.selected,p.x,p.y)){
+      // タップした駒自身が味方（＝パス対象そのもの）ならその駒へ直接パス。
+      // 相手の駒や、同マスの別の味方駒をタップした場合はマスへのパス扱い（doPassToCell側で
+      // 味方がいれば自動的にその駒へのパスに切り替わる）。
+      if(p.team==='b'){ doPassToPiece(state.selected,p); return; }
+      doPassToCell(state.selected,p.x,p.y); return;
+    }
+    if(state.mode==='move' && isMovable(state.selected,p.x,p.y)){
+      const carry = chainHolder() && chainHolder().id===state.selected.id;
+      movePiece(state.selected,p.x,p.y,carry); return;
+    }
   }
   if(p.team!=='b'){ log('相手の駒は操作できません（プロト版）'); return; }
-
-  const stack=piecesAt(p.x,p.y);
-  const isExpanded=state.expanded&&state.expanded.x===p.x&&state.expanded.y===p.y;
-
-  // 複数駒が重なっていて、まだ展開していない → まず展開（散らして選びやすく）
-  if(stack.length>1 && !isExpanded && !state.selected){
-    state.expanded={x:p.x,y:p.y};
-    log(`(${p.x},${p.y}) に ${stack.length}人。タップで個別選択できます`);
-    render(); return;
-  }
-
-  // 同じ駒を再タップ＝選択解除
-  if(state.selected&&state.selected.id===p.id){ clearSelection(); render(); return; }
-
-  // 駒を選択 → そのまま移動モード（Unity版：駒タップ＝移動。ボール保持駒はドリブル）
-  state.selected=p;
-  state.expanded={x:p.x,y:p.y};
-  const holder = state.phase==='input' ? chainHolder() : ballHolder();
-  const isHolder = holder && holder.id===p.id;
-  if(chainMovedIds.has(p.id)){
-    state.mode='idle';
-    log(`${label(p)} はこのターン移動済み`+(isHolder?'（ボールをタップでパス/シュート）':''));
-  }else{
-    state.mode='move';
-    log(isHolder?`${label(p)}（ボール保持）：黄マスへドリブル／ボールをタップでパス・シュート`
-               :`${label(p)} を選択：黄色いマスへ移動`);
-  }
+  // それ以外は「そのマスの選択」扱い（扇ポップアップ）
+  handleCellTap(p.x,p.y);
+}
+/* マスタップの共通処理：自駒＋ボール項目を集計し、扇ポップアップ or 直接選択 or 解除。 */
+function handleCellTap(x,y){
+  const items=buildSelectItems(x,y);
+  if(items.length===0){ clearSelection(); render(); return; }          // 自駒なし→解除（キャンセル）
+  // 項目が1つ（駒のみ・ボールなし）＝曖昧さが無い → マスタップ1回で選択確定（ポップ演出込み・範囲表示）。
+  if(items.length===1 && items[0].type==='piece'){ selectPieceItem(items[0].piece); return; }
+  // 項目が2つ以上 → 弧ポップアップを開く（選択未確定＝範囲表示なし）。項目タップで確定（2タップ目）。
+  clearSelection();
+  state.popup={x,y};
   render();
 }
-/* ボールをタップ＝パス/キックモード（Unity OnSelectBall：駒とは別対象）。
-   ボール保持駒は CanBallKick=hasBall なので、移動済みでも蹴れる。 */
-function onBallClick(p){
-  if(state.phase!=='input') return;
+/* 扇から駒を選択：ここで初めて選択確定＝範囲ハイライトを出す。 */
+function selectPieceItem(p){
+  state.popup=null;
+  state.selected=p; state.mode='move'; state.ballSelected=false; state.expanded=null;
+  const isHolder = chainHolder() && chainHolder().id===p.id;
+  if(isHolder) log(`${label(p)}（ボール保持）を選択：黄マスへドリブル／ボールをタップでパス`);
+  else if(chainMovedIds.has(p.id)) log(`${label(p)} はこのターン移動済み`);
+  else if(chainPassedIds.has(p.id)) log(`${label(p)} はこのターンパス予約済み（選び直すと移動/ドリブルに変更されます）`);
+  else log(`${label(p)} を選択：黄色いマスへ移動を予約`);
+  render();
+}
+/* 扇から「ボール」を選択：
+   ・保持球（Piece状態）… その保持駒でパスモードへ（selectBall）
+   ・こぼれ球（Cell状態）… 最寄り(最高コスト)の自駒が確保する想定でその駒を選択 */
+function selectBallItem(x,y){
   const holder=chainHolder();
-  if(!holder || holder.id!==p.id || p.team!=='b') return;
-  state.selected=p; state.expanded={x:p.x,y:p.y}; state.mode='pass';
-  log(`${label(p)} のボールを選択：パス先（青い丸/味方）をタップ、またはシュートボタン`);
+  if(holder && holder.team==='b' && holder.x===x && holder.y===y){
+    selectBall(); return; // 保持球 → パス
+  }
+  const own=piecesAt(x,y).filter(p=>p.team==='b');
+  if(own.length){
+    const picker=own.slice().sort((a,b)=>pieceCost(b)-pieceCost(a))[0];
+    log(`こぼれ球を選択：${label(picker)} が確保して行動します`);
+    selectPieceItem(picker);
+  }else{ clearSelection(); render(); }
+}
+/* ボールトークンのタップ＝パスモード（保持駒のパス範囲を表示）。 */
+function selectBall(){
+  const h=chainHolder();
+  if(!h || h.team!=='b'){ log('パスできるボール保持駒がいません'); return; }
+  state.popup=null; state.selected=h; state.expanded=null;
+  state.mode='pass'; state.ballSelected=true;
+  log(`ボール選択：青い丸のマス（味方/空マス）へパス${calcShoot(h).area!=='-'?'／再度ボールをタップしシュートも選択可':''}`);
   render();
 }
-function updateActionBar(){
-  // 旧・画面下部の固定バーは廃止（放射状メニューに置き換え）。常に非表示。
-  const bar=document.getElementById('actionBar'); if(bar) bar.style.display='none';
-}
+// 行動選択は盤上ポップアップ（駒タップ=移動／ボールタップ=パス）へ移行。旧UIの再描画呼び出しは無効化。
+function updateActionBar(){}
 function label(p){ return p.posType.toUpperCase()+'('+p.cost+')'; }
-function clearSelection(){ state.selected=null; state.mode='idle'; state.expanded=null;
-  const bar=document.getElementById('actionBar'); if(bar) bar.style.display='none'; }
+function clearSelection(){ state.selected=null; state.mode='idle'; state.expanded=null; state.ballSelected=false; state.popup=null; }
 
 function onCellClick(x,y){
-  if(!state.selected){
-    if(state.expanded && !(state.expanded.x===x&&state.expanded.y===y)){ state.expanded=null; render(); }
-    return;
+  // 駒選択中：有効な行動先なら実行、範囲外タップなら選択解除（キャンセル）
+  if(state.selected){
+    const p=state.selected;
+    if(state.mode==='pass' && isPassable(p,x,y)){ doPassToCell(p,x,y); return; }
+    if(state.mode==='move' && isMovable(p,x,y)){
+      // 種別は「ユーザーがどの行動を選んだか」だけで決める（実行時のライブなボール保持状態から逆算しない）。
+      // ドリブルはボールをタップして選ぶ操作（chainHolder）でのみ成立する。
+      const carry = chainHolder() && chainHolder().id===p.id;
+      movePiece(p,x,y,carry); return;
+    }
+    log('選択を解除しました'); clearSelection(); render(); return; // 有効範囲外 → キャンセル
   }
-  const p=state.selected;
-  // モードに厳密に従う
-  if(state.mode==='pass'){
-    if(isPassable(p,x,y)){ doPassToCell(p,x,y); return; }
-    log('そのマスへはパスできません（青い丸のマスへ）');
-    return;
+  // 弧ポップアップ表示中：対象マス以外をタップ → キャンセル（閉じる）
+  if(state.popup){
+    if(!(state.popup.x===x && state.popup.y===y)){ clearSelection(); render(); return; }
+    return; // 同じマスの余白タップは維持
   }
-  // moveモード（ドリブル含む）
-  const holder = state.phase==='input' ? chainHolder() : ballHolder();
-  const hasBall=holder&&holder.id===p.id;
-  if(isMovable(p,x,y)){ movePiece(p,x,y,hasBall); return; }
-  log('そのマスへは移動できません（黄色いマスへ）');
+  // 未選択・未ポップアップ → マス選択
+  handleCellTap(x,y);
 }
 
-/* ===== 仕込み（予約）：即実行せずコマンドを積む ===== */
+/* ===== 仕込み（予約）：即実行せずコマンドを積む =====
+   駒単位でしかロックしない：既存のパス／スルーパス予約がある駒でも選択・上書きは可能（キャンセル＋選び直し）。
+   種別(type)は呼び出し側が渡した carryBall（＝ユーザーが選んだ行動）だけで決まる。
+   実行時のライブなボール保持状態（ballHolder()）を見て暗黙に上書きすることはしない。
+   スルーパス（スペースへのパス）はこの関数を一切経由しない別経路（doPassToCell）で処理する。 */
 function movePiece(p,x,y,carryBall){
   myCommands=myCommands.filter(c=>c.pieceId!==p.id);
   myCommands.push({type:carryBall?'dribble':'move', pieceId:p.id, tx:x, ty:y, team:'b'});
@@ -1098,6 +1158,7 @@ function movePiece(p,x,y,carryBall){
 function doPassToPiece(from,to){
   myCommands=myCommands.filter(c=>c.pieceId!==from.id);
   myCommands.push({type:'pass', pieceId:from.id, targetId:to.id, tx:to.x, ty:to.y, team:'b'});
+  chainPassedIds.add(from.id); // このターンパス済み（表示用の記録。再選択して移動/ドリブルへの変更は可）
   // 連鎖：ボールは to へ移る。passCount を増やす。
   chainHolderId=to.id;
   chainPassCount++;
@@ -1105,11 +1166,14 @@ function doPassToPiece(from,to){
   // 受け手がまだ移動を仕込んでいなければ、続けてその駒を選択しパスモードに（無限連鎖）
   continueChainFrom(to);
 }
+/* スルーパス（スペースへのパス）専用経路。movePieceは一切呼ばない＝駒の座標(from.x/from.y)は変更しない。
+   ボールだけが (x,y) へ飛ぶ。空マスでなく味方がいた場合のみ通常パス(doPassToPiece)に委譲する。 */
 function doPassToCell(from,x,y){
   const mate=piecesAt(x,y).find(q=>q.team===from.team);
   if(mate){ return doPassToPiece(from,mate); }
   myCommands=myCommands.filter(c=>c.pieceId!==from.id);
   myCommands.push({type:'throughpass', pieceId:from.id, tx:x, ty:y, team:'b'});
+  chainPassedIds.add(from.id); // このターンパス済み（表示用の記録。再選択して移動/ドリブルへの変更は可）
   // スルーパス先は空マス→そのマスに味方を後で動かして受ける運用。連鎖の論理保持は解除。
   chainHolderId=null;
   chainPassCount++;
@@ -1117,23 +1181,21 @@ function doPassToCell(from,x,y){
   clearSelection(); render();
 }
 /* 連鎖継続：受け手を自動選択してパスモードへ。
-   Unity条件：パス先に敵がいない or まだ一度もパスしていない場合に連鎖可。
-   ここでは受け手がそのターンに移動を仕込んでいなければパスを続けられる。 */
+   連鎖継続条件を統一（項目3）：パス回数に関わらず、着地マスに敵駒が存在すれば即連鎖終了。
+   「まだ一度もパスしてない」特例は撤廃し、常に着地マスの敵駒有無のみで判定する。
+   （加えて、受け手がこのターン移動を仕込み済みなら再度は蹴れるが連鎖UIは畳む） */
 function continueChainFrom(to){
-  // Unity条件の厳密化：連鎖継続は
-  //   ①受け手がこのターン移動を仕込んでいない（CanBallKick）かつ
-  //   ②「受け手のマスに敵がいない」or「まだ最初のパスだけ（chainPassCount<=1）」
-  // を満たす場合のみ。敵マスで受けた2本目以降は連鎖を打ち切る。
-  const enemyOnCell = piecesAt(to.x,to.y).some(q=>q.team!==to.team);
-  const canChain = !chainMovedIds.has(to.id) && (!enemyOnCell || chainPassCount<=1);
-  if(!canChain && enemyOnCell && chainMovedIds.has(to.id)===false){
-    log(`→ ${label(to)} は敵マスで受けたため、ここで連鎖終了（保持）`);
+  const enemyAtLanding = piecesAt(to.x,to.y).some(q=>q.team!==to.team);
+  const canChain = !enemyAtLanding && !chainMovedIds.has(to.id);
+  if(canChain){
+    // 連鎖継続＝新しい保持駒のボールが選択された状態にする（続けてパス先が表示される）
+    state.popup=null; state.selected=to; state.mode='pass'; state.expanded=null; state.ballSelected=true;
+    render();
+    log(`→ ${label(to)} が受けました。続けてボールでパス／他をタップで終了`);
+  }else{
+    if(enemyAtLanding) log(`→ ${label(to)} の着地マスに敵がいるため連鎖終了（実行で奪取判定）`);
+    clearSelection(); render();
   }
-  // Unity版：パス後は自動でモードに入らない。続けて蹴るなら受け手のボールをタップ。
-  clearSelection();
-  if(canChain) log(`→ ${label(to)} がボールを受けました。続けて蹴るなら受け手のボールをタップ`);
-  else log(`→ ${label(to)} がボールを受けました（敵マスのためここで保持）`);
-  render();
 }
 function tryShoot(p){
   const r=calcShoot(p);
@@ -1150,14 +1212,8 @@ function buildKickoffAfterGoal(){ const ko=pieces.find(p=>p.team==='b'&&p.posTyp
 
 function log(m){const l=document.getElementById('log');l.innerHTML=`<div>${m}</div>`+l.innerHTML;}
 
-document.getElementById('shootBtn').addEventListener('click',()=>{
-  if(state.phase!=='input'){ return; }
-  const holder=chainHolder();
-  if(holder && holder.team==='b'){ tryShoot(holder); }
-  else log('ボールを持つ自分の駒がいません');
-});
-document.getElementById('cancelSelBtn').addEventListener('click',()=>{ clearSelection(); render(); });
-document.getElementById('resetBtn').addEventListener('click',()=>{buildTeams();myCommands=[];oppCommands=[];state={turn:1,half:'前半',addedTime:(Math.random()<0.5?0:1),scoreSelf:0,scoreOpp:0,selected:null,mode:'idle',expanded:null,phase:'input'};log('配置をリセットしました');render();});
+// 旧・下部モードボタンは撤去。選択は盤上ポップアップ（駒タップ=移動／ボールタップ=パス／シュートも扇内の選択肢）。
+document.getElementById('resetBtn').addEventListener('click',()=>{buildTeams();myCommands=[];oppCommands=[];state={turn:1,half:'前半',scoreSelf:0,scoreOpp:0,selected:null,mode:'idle',expanded:null,atFirst:null,atSecond:null,matchOver:false,ballSelected:false,popup:null,phase:'input'};log('配置をリセットしました');render();});
 document.getElementById('tackleDemoBtn').addEventListener('click',()=>{
   const holder=ballHolder();
   if(!holder){ log('盤上にボール保持駒がいません'); return; }
@@ -1165,37 +1221,47 @@ document.getElementById('tackleDemoBtn').addEventListener('click',()=>{
   const adj=enemies.filter(e=>Math.abs(e.x-holder.x)+Math.abs(e.y-holder.y)<=1);
   const tackler=adj[0]||enemies.reduce((a,b)=>(Math.abs(b.x-holder.x)+Math.abs(b.y-holder.y))<(Math.abs(a.x-holder.x)+Math.abs(a.y-holder.y))?b:a);
   log(`―― タックル実演：${tackler.posType.toUpperCase()}(${tackler.cost}) → ${holder.posType.toUpperCase()}(${holder.cost}) ――`);
-  showCutin('tackle',850);
+  const hx=holder.x, hy=holder.y; // タックル発生地点（演出追従用）
+  showCutinAtPiece('tackle',850,hx,hy);
   const r=resolveTackle(holder,tackler);
-  // 結果ログを演出キーに変換して順番に再生
+  // 結果ログを演出キーに変換して順番に再生（駒に紐づく演出は発生地点へ追従）
   r.log.forEach(m=>{
     log('・'+m);
-    if(m.includes('ファウル発生')) showCutin('foul',950);
-    else if(m.includes('PK成功')||m.includes('PK失敗')) showCutin('pk',900);
-    else if(m.includes('FK成功')||m.includes('FK失敗')) showCutin('fk',900);
-    else if(m.includes('CK')) showCutin('ck',850);
-    else if(m.includes('タックル成功')) showCutin('tackleSuccess',900);
-    else if(m.includes('ゴール！')) showCutin('goal',1200);
+    if(m.includes('ファウル発生')) showCutinAtPiece('foul',950,hx,hy);
+    else if(m.includes('PK成功')||m.includes('PK失敗')) showCutinAtPiece('pk',900,hx,hy);
+    else if(m.includes('FK成功')||m.includes('FK失敗')) showCutinAtPiece('fk',900,hx,hy);
+    else if(m.includes('CK')) showCutinAtPiece('ck',850,hx,hy);
+    else if(m.includes('タックル成功')) showCutinAtPiece('tackleSuccess',900,hx,hy);
+    else if(m.includes('ゴール！')) showCutin('goal',1200); // 得点は全体演出
   });
   if(r.goal){ state.scoreSelf+=(holder.team==='b'?0:1); state.scoreOpp+=(holder.team==='b'?1:0); buildKickoffAfterGoal(); }
-  else if(r.turnover){ ball={target:'cell',pieceId:null,x:holder.x,y:holder.y}; log('→ ボールがこぼれました'); }
+  else if(r.turnover){
+    if(r.restart){ // PK失敗：GKキャッチで即リスタート（こぼれ球なし）
+      const gk=pieces.find(pp=>pp.team!==holder.team&&pp.posType==='gk');
+      if(gk){ ball={target:'piece',pieceId:gk.id,x:null,y:null}; log('→ GKがキャッチ、リスタート'); }
+      else { placeLooseBall(hx,hy,'→ ボールがこぼれました'); }
+    }
+    else if(r.rebound){ placeLooseBall(r.rebound.x,r.rebound.y,'→ こぼれ球'); } // FK失敗（壁）はクリア対象外
+    else { placeLooseBallDefensive(hx,hy,'→ ボールがこぼれました'); } // 通常タックル奪取＝守備成功→ボックスならクリア
+  }
   clearSelection(); render();
 });
 document.getElementById('offsideDemoBtn').addEventListener('click',()=>{
   const holder=ballHolder();
   if(!holder||holder.team!=='b'){ log('自分のボール保持駒がいません'); return; }
-  const enemies=pieces.filter(p=>p.team==='r').sort((a,b)=>a.y-b.y);
-  const offsideLine = enemies.length>1 ? enemies[1].y : enemies[0].y;
-  const beforeY=holder.y, afterY=holder.y-1;
-  const p=calcOffside(offsideLine, beforeY, afterY);
+  // 実プレイと同じ方向対応ロジックで判定（青=-Y方向へ攻める）
+  const dir=attackDir(holder.team);
+  const offsideLine=offsideLineFor(holder.team==='b'?'r':'b');
+  const p=(offsideLine==null)?0:calcOffside(offsideLine, holder.y, holder.y, dir);
   const isOff=rollPercent(p);
-  log(`―― オフサイド実演：ライン y=${offsideLine}, 移動 ${beforeY}→${afterY} ――`);
+  log(`―― オフサイド実演：ライン y=${offsideLine}, 受け手 y=${holder.y}（相対:${['前','線上','後'][relLine(offsideLine,holder.y,dir)]}）――`);
   log(`・オフサイドになる確率 ${p}% → ${isOff?'オフサイド！':'セーフ'}`);
-  if(isOff) showCutin('offside',1100);
+  // 成立時は実際の成立後処理（位置戻し＋こぼれ球＋駒追従演出）を発火
+  if(isOff){ handleOffside(holder, holder.x, holder.y).then(()=>render()); }
 });
 document.getElementById('endTurnBtn').addEventListener('click',()=>{
   if(state.phase==='replay'){ log('再生中です…'); return; }
-  if(state.phase==='finished'){ log('試合は終了しています。「配置リセット」で再開できます。'); return; }
+  if(state.phase==='ended'){ log('試合は終了しています。「リセット」で再開できます'); return; }
   resolveSimultaneousTurn();
 });
 
@@ -1230,46 +1296,76 @@ async function resolveSimultaneousTurn(){
     render();
   }
 
-  // こぼれ球の所有者決定（そのマスにいる最高コストの駒が確保）
-  resolveFreeBall();
+  // こぼれ球の拾得判定（そのマスに入った駒／複数ならコスト最高が拾う）
+  pickupLooseBall();
   render();
 
   // ターン後処理
   await showCutin('start_turn',500); // 区切り
   myCommands=[]; oppCommands=[];
   pieces.forEach(p=>{ p.sx=p.x; p.sy=p.y; p.moved=false; });
-  resetChain();
 
-  // 試合進行：前半15＋AT(0〜1) → ハーフタイム → 後半15＋AT(1〜3) → 試合終了（GDD準拠）
-  const REG_TURNS=15;
+  await advanceMatchClock(); // ターン進行・前後半切替・AT・試合終了の判定
+
+  if(state.matchOver){
+    state.phase='ended';
+    await showCutin('start_turn',700);
+    log(`―― 試合終了（フルタイム）　あなた ${state.scoreSelf} - ${state.scoreOpp} 相手 ――`);
+    render();
+    return;
+  }
+  resetChain();
+  state.phase='input';
+  log(`―― ${state.half}${state.turn>REGULAR_TURNS?' AT':''} ターン ${state.turn} 開始：行動を仕込んでください ――`);
+  render();
+}
+
+/* AT抽選（前半0〜1／後半1〜3）。ハーフごとに一度だけ呼ばれ、以降固定。 */
+function rollAT(half){
+  return half==='前半' ? Math.floor(Math.random()*2) : 1+Math.floor(Math.random()*3);
+}
+/* ハーフタイム演出＋後半キックオフの組み直し。 */
+async function halftime(){
+  log('―― ハーフタイム ――');
+  await showCutin('kickoff',900);
+  buildKickoffAfterGoal(); // 後半は簡易に自分(青)ボールから再開
+}
+/* ターンを1つ進め、AT抽選・前半終了(ハーフタイム)・試合終了を処理する。 */
+async function advanceMatchClock(){
   state.turn++;
-  const limit = REG_TURNS + state.addedTime; // このハーフの最終ターン番号
-  if(state.turn > limit){
-    if(state.half==='前半'){
-      state.half='後半'; state.turn=1;
-      state.addedTime = 1 + Math.floor(Math.random()*3); // 後半AT 1〜3
-      await showCutin('start_turn',700);
-      log(`―― ハーフタイム：後半開始（前半終了 ${state.scoreSelf}-${state.scoreOpp}）――`);
-    } else {
-      state.phase='finished';
-      const me=state.scoreSelf, op=state.scoreOpp;
-      const verdict = me>op ? 'あなたの勝ち！' : (me<op ? '相手の勝ち…' : '引き分け');
-      log(`―― 試合終了！ ${me}-${op}  ${verdict} ――`);
-      render();
-      return;
+  if(state.half==='前半'){
+    // レギュラー15ターン消化直後にAT(0〜1)を一度だけ抽選
+    if(state.atFirst===null && state.turn>REGULAR_TURNS){
+      state.atFirst=rollAT('前半');
+      if(state.atFirst>0) log(`⏱ 前半アディショナルタイム ${state.atFirst} ターン`);
+    }
+    const total=REGULAR_TURNS+(state.atFirst||0);
+    if(state.turn>total){          // 前半（AT含む）消化完了 → ハーフタイム → 後半へ
+      await halftime();
+      state.half='後半';
+      state.turn=1;
+    }
+  }else{
+    if(state.atSecond===null && state.turn>REGULAR_TURNS){
+      state.atSecond=rollAT('後半');
+      log(`⏱ 後半アディショナルタイム ${state.atSecond} ターン`);
+    }
+    const total=REGULAR_TURNS+(state.atSecond||0);
+    if(state.turn>total){          // 後半（AT含む）消化完了 → 試合終了
+      state.matchOver=true;
     }
   }
-  state.phase='input';
-  log(`―― あなた（青）の${state.half} ターン ${state.turn} 開始：行動を仕込んでください ――`);
-  render();
 }
 
 async function execCommand(cmd){
   const p=pieceById(cmd.pieceId);
   if(!p)return; // 既に奪われた等
   if(cmd.type==='move'||cmd.type==='dribble'){
-    const carry=(cmd.type==='dribble')||(ballHolder()&&ballHolder().id===p.id);
-    if(carry) await showCutin('dribble',850);
+    // carryはcmd.type（予約時に確定した種別）だけで決める。movePiece側の原則と統一。
+    // 実行時のライブなボール保持状態（ballHolder()）を見て暗黙に上書きすることはしない。
+    const carry=cmd.type==='dribble';
+    // 演出は移動先に敵駒がいて接触（競り合い）が起こり得る場合のみ。素通りの移動では出さない。
+    if(carry && piecesAt(cmd.tx,cmd.ty).some(q=>q.team!==p.team)) await showCutin('dribble',850);
     p.x=cmd.tx; p.y=cmd.ty;
     log(`${p.team==='b'?'青':'赤'} ${label(p)} → (${cmd.tx},${cmd.ty}) ${carry?'ドリブル':'移動'}`);
     // ボール保持のままゴールエリア到達で得点
@@ -1279,13 +1375,15 @@ async function execCommand(cmd){
   }else if(cmd.type==='pass'){
     const to=pieceById(cmd.targetId);
     if(!to){ return; }
-    await showCutin('pass',850);
+    // 演出は経路上／着地マスに敵駒がいて奪取判定（チェック）が起こり得る場合のみ。素通りでは出さない。
+    const passRoute=getRoute(p.x,p.y,to.x,to.y);
+    if(hasDefensiveContact(p,passRoute,to.x,to.y)) await showCutin('pass',850);
     // 1. 経路上の敵マスでのパスカット判定（敵を通り越すと取られる）
     const path=resolveFlyingPassPath(p, to.x, to.y);
     if(path.cut){
-      await showCutin('passCut',950);
+      await showCutinAtPiece('passCut',950,path.cutAt.x,path.cutAt.y);
       log(`${p.team==='b'?'青':'赤'}パス → (${path.cutAt.x},${path.cutAt.y}) で${path.cutter.posType.toUpperCase()}にカット！（カット率${path.cutProb}%）`);
-      ball={target:'cell',pieceId:null,x:path.cutAt.x,y:path.cutAt.y};
+      placeLooseBallDefensive(path.cutAt.x,path.cutAt.y,'→ こぼれ球'); // 守備成功→ボックスならクリア
       render(); return;
     }
     // 2. 着地マスでの着地パスカット判定
@@ -1293,51 +1391,34 @@ async function execCommand(cmd){
     const ok=rollPercent(prob);
     log(`${p.team==='b'?'青':'赤'}パス ${p.posType.toUpperCase()}→${to.posType.toUpperCase()}（着地${prob}%）${ok?'成功':'失敗'}`);
     if(ok){
-      if(await checkOffsideOnReceive(p,to)){ render(); return; } // オフサイドなら位置戻し＋守備側ボール
+      // パス成立→相手陣で守備ラインより前ならオフサイド成立（成立後は位置戻し＋こぼれ球）
+      if(isOffsidePass(p,to)){ await handleOffside(to,to.x,to.y); render(); return; }
       ball={target:'piece',pieceId:to.id,x:null,y:null};
     }
-    else { await showCutin('passCut',950); ball={target:'cell',pieceId:null,x:to.x,y:to.y}; log('→ 着地マスでパスカット'); }
+    else { await showCutinAtPiece('passCut',950,to.x,to.y); log('→ 着地マスでパスカット'); placeLooseBallDefensive(to.x,to.y,'→ こぼれ球'); }
     render();
   }else if(cmd.type==='throughpass'){
-    await showCutin('thruPass',850);
+    // 演出は経路上／着地マスに敵駒がいて奪取判定（チェック）が起こり得る場合のみ。素通りでは出さない。
+    const thruRoute=getRoute(p.x,p.y,cmd.tx,cmd.ty);
+    if(hasDefensiveContact(p,thruRoute,cmd.tx,cmd.ty)) await showCutin('thruPass',850);
     // 1. 経路上の敵マスでのパスカット判定
     const path=resolveFlyingPassPath(p, cmd.tx, cmd.ty);
     if(path.cut){
-      await showCutin('passCut',950);
+      await showCutinAtPiece('passCut',950,path.cutAt.x,path.cutAt.y);
       log(`${p.team==='b'?'青':'赤'}スルーパス → (${path.cutAt.x},${path.cutAt.y}) で${path.cutter.posType.toUpperCase()}にカット！（カット率${path.cutProb}%）`);
-      ball={target:'cell',pieceId:null,x:path.cutAt.x,y:path.cutAt.y};
+      placeLooseBallDefensive(path.cutAt.x,path.cutAt.y,'→ こぼれ球'); // 守備成功→ボックスならクリア
       render(); return;
     }
     // 2. 着地マス（空マス）の通過成功率で判定
     const prob=calcFlyingPass(p,cmd.tx,cmd.ty);
     const ok=rollPercent(prob);
     log(`${p.team==='b'?'青':'赤'}スルーパス ${p.posType.toUpperCase()}→(${cmd.tx},${cmd.ty})（着地${prob}%）${ok?'成功':'失敗'}`);
-    ball={target:'cell',pieceId:null,x:cmd.tx,y:cmd.ty};
-    if(!ok){ await showCutin('passCut',950); log('→ 着地マスでカット'); }
+    if(ok){ ball={target:'cell',pieceId:null,x:cmd.tx,y:cmd.ty}; }
+    else { await showCutinAtPiece('passCut',950,cmd.tx,cmd.ty); log('→ 着地マスでカット'); placeLooseBallDefensive(cmd.tx,cmd.ty,'→ こぼれ球'); }
     render();
   }else if(cmd.type==='shoot'){
-    let prob, area='-';
-    if(p.team==='b'){ const r=calcShoot(p); prob=r.prob; area=r.area; }
-    else { const gk=pieces.find(q=>q.team==='b'&&q.posType==='gk'); const gkCost=gk?pieceCost(gk):1; const c=cellAt(p.x,p.y);
-      prob=100; if(c.t==='selfga'||(c.t==='pa'&&p.y>0)){prob=clampProb(T_PA_SHOOT[costToIndex(gkCost)][costToIndex(pieceCost(p))]);area='PA';} else if(c.t==='va'&&p.y>0){prob=clampProb(T_VA_SHOOT[costToIndex(gkCost)][costToIndex(pieceCost(p))]);area='VA';} }
-    await showCutin('shoot',850);
-    const res=resolveShoot(p, prob);
-    if(res.result==='goal'){
-      log(`${p.team==='b'?'青':'赤'}シュート（${area} ${prob}%）→ ゴール！`);
-      flashOnPiece(p,'GOAL!!');
-      await scoreGoal(p.team);
-    }else if(res.result==='block'){
-      log(`${p.team==='b'?'青':'赤'}シュート → ${res.reason}（ブロック）`);
-      flashOnPiece(p,'BLOCK');
-      await showCutin('shootStop',900);
-      ball={target:'cell',pieceId:null,x:p.x,y:p.y}; // こぼれ球（所有者は後段で決定）
-    }else{ // セーブ：GKが必ずキャッチ
-      log(`${p.team==='b'?'青':'赤'}シュート（${area} ${prob}%）→ GKセーブ・キャッチ`);
-      await showCutin('saving',900);
-      const sgk=pieces.find(q=>q.team!==p.team && q.posType==='gk');
-      if(sgk){ ball={target:'piece',pieceId:sgk.id,x:null,y:null}; flashOnPiece(sgk,'SAVE'); }
-      else { ball={target:'cell',pieceId:null,x:p.x,y:p.y}; }
-    }
+    // ステップ1〜3の統一フロー（calcShootは両チーム対応済み）
+    await resolveShootCommand(p);
     render();
   }
 }
@@ -1348,11 +1429,108 @@ async function scoreGoal(team){
   if(team==='b') buildKickoffAfterGoal(); else buildKickoffAfterGoalRed();
 }
 
+/* ===== こぼれ球（フリーボール）共通処理：PENDING項目3 =====
+   ブロック/セーブ/クリア全経路で共通化。ボールをそのマスにCell状態で置く。 */
+function placeLooseBall(x,y,msg){
+  ball={target:'cell',pieceId:null,x,y};
+  if(msg) log(msg);
+}
+/* ===== クリア処理（項目2）=====
+   自陣PA/GAで守備成功して発生したこぼれ球は、中盤(y=0)方向へ1マス押し出す。
+   押し出し先が盤外/ゴールなら元マスにフォールバック。ボックス外は変更なし。
+   セル座標だけで方向を決める（青の自陣=y>0、赤の自陣=y<0）。 */
+function clearPushCell(x,y){
+  const c=cellAt(x,y); if(!c) return {x,y,cleared:false};
+  let ny=null;
+  if(c.t==='selfga' || (c.t==='pa'&&y>0)) ny=y-1;       // 青の自陣ボックス→中盤方向
+  else if(c.t==='oppga' || (c.t==='pa'&&y<0)) ny=y+1;   // 赤の自陣ボックス→中盤方向
+  if(ny===null) return {x,y,cleared:false};             // ボックス外
+  const nc=cellAt(x,ny);
+  if(!nc || nc.t==='selfgoal' || nc.t==='oppgoal') return {x,y,cleared:false}; // フォールバック
+  return {x, y:ny, cleared:true};
+}
+/* 守備成功時のこぼれ球配置（クリア判定込み）。共通関数placeLooseBallはそのまま流用。 */
+function placeLooseBallDefensive(x,y,baseMsg){
+  const r=clearPushCell(x,y);
+  placeLooseBall(r.x, r.y, r.cleared ? '→ クリア！こぼれ球を中盤方向へ押し出し' : (baseMsg||'→ こぼれ球'));
+  return r.cleared;
+}
+
+/* ===== オフサイド 成立後処理（項目1）=====
+   受け手をターン開始位置(sx,sy)へ戻し（移動も取り消し）、成立地点にこぼれ球を配置。
+   次ターン、そのマスに入った駒が既存の拾得ロジックで拾う。演出は成立地点に追従表示。 */
+async function handleOffside(receiver, atX, atY){
+  receiver.x=receiver.sx; receiver.y=receiver.sy;         // 位置戻し（移動取り消し）
+  placeLooseBall(atX, atY, `⚠ オフサイド：${label(receiver)} の動きが無効化されました`);
+  await showCutinAtPiece('offside', 1100, atX, atY);
+}
+/* そのマスに入った駒がボールを拾う。複数ならコスト最高が優先。
+   同値はホスト(青)優先→id昇順（同時ターン処理のマージ順に準拠）。
+   誰もいなければボールはそのマスに留まる。 */
+function pickupLooseBall(){
+  if(ball.target!=='cell') return;
+  const here=piecesAt(ball.x,ball.y);
+  if(here.length===0) return; // 誰も入らなかった→留まる
+  const winner=here.slice().sort((a,b)=>{
+    if(pieceCost(b)!==pieceCost(a)) return pieceCost(b)-pieceCost(a); // コスト降順
+    if(a.team!==b.team) return a.team==='b'?-1:1;                     // 同値ならホスト優先
+    return a.id-b.id;                                                // さらに同値ならid昇順
+  })[0];
+  ball={target:'piece',pieceId:winner.id,x:null,y:null};
+  log(`こぼれ球を ${label(winner)} が確保（コスト${winner.cost}）`);
+}
+
+/* ===== シュート判定フロー（ステップ1〜3）＝PENDING項目2 =====
+   ステップ1: 経路上の敵DFで確定ブロック（確率計算なし）
+   ステップ2: DFブロック抽選（唯一の確率ゲート＝PA/VAテーブル）
+   ステップ3: GK判定（位置による確定判定。確率ではない） */
+async function resolveShootCommand(p){
+  const teamLabel=p.team==='b'?'青':'赤';
+  const goalCell=p.team==='b'?{x:0,y:-3}:{x:0,y:4};
+  const enemyGK=pieces.find(q=>q.team!==p.team && q.posType==='gk');
+  await showCutin('shoot',850);
+
+  // ステップ1: 遮蔽チェック（経路の中間マスに敵DFがいれば即ブロック確定）
+  const route=getRoute(p.x,p.y,goalCell.x,goalCell.y);
+  for(const [rx,ry] of route){
+    const blocker=piecesAt(rx,ry).find(q=>q.team!==p.team && q.posType==='df');
+    if(blocker){
+      await showCutinAtPiece('saving',900,rx,ry);
+      log(`${teamLabel}シュート → (${rx},${ry}) で ${blocker.posType.toUpperCase()} が遮断（確定ブロック）`);
+      placeLooseBallDefensive(rx,ry,'→ こぼれ球'); // 守備成功→ボックスならクリア
+      return;
+    }
+  }
+
+  // ステップ2: DFブロック抽選（唯一の確率ゲート）
+  const sh=calcShoot(p);
+  const ok=rollPercent(sh.prob);
+  log(`${teamLabel}シュート（${sh.area} ${sh.prob}%）`);
+  if(!ok){
+    // 発生マス＝シュートが遮られたゴール手前（経路末尾。無ければシューターのマス）
+    const rb=route.length?route[route.length-1]:[p.x,p.y];
+    await showCutinAtPiece('saving',900,rb[0],rb[1]);
+    placeLooseBallDefensive(rb[0],rb[1],'→ ブロック → こぼれ球'); // 守備成功→ボックスならクリア
+    return;
+  }
+
+  // ステップ3: GK判定（位置による確定判定：コース差±1マスでカバー＝確定キャッチ）
+  if(enemyGK && Math.abs(p.x-enemyGK.x)<=1){
+    await showCutinAtPiece('saving',900,enemyGK.x,enemyGK.y);
+    log('→ GKがコースをカバー！確定キャッチ');
+    ball={target:'piece',pieceId:enemyGK.id,x:null,y:null}; // GK保持で次ターンへ（こぼれ球なし）
+    return;
+  }
+  // カバーされていない or GK不在 → ゴール確定
+  await scoreGoal(p.team);
+}
+
 function resetChain(){
   const h=ballHolder();
   chainHolderId = (h && h.team==='b') ? h.id : null;
   chainPassCount=0;
   chainMovedIds=new Set();
+  chainPassedIds=new Set();
 }
 
 buildTeams();
