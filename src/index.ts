@@ -1,0 +1,760 @@
+import { DurableObject } from "cloudflare:workers";
+import {
+  REGULAR_TURNS,
+  createInitialGameState,
+  normalizeGameState,
+  opponentTeam,
+  rollIntInclusive,
+  resolveServerTurn,
+  setupKickoffForTeam,
+  validateCommandsForTeam,
+  type FootballChessGameState,
+  type GameCommand,
+  type Team,
+  type TurnEvent,
+  type TurnResolution,
+} from "./game-core";
+
+type SeatRole = Team | "spectator";
+type RoomStatus = "waiting" | "ready" | "playing" | "finished";
+
+interface ContentInfo {
+  property: "UniversoFutbol";
+  slug: string;
+  title: "Football Chess";
+  basePath: string;
+  universoFutbolUrl: string;
+}
+
+interface PlayerSeat {
+  clientId: string;
+  displayName: string;
+  connected: boolean;
+  joinedAt: string;
+  lastSeenAt: string;
+}
+
+interface TurnInfo {
+  half: "first" | "second";
+  index: number;
+  inputDeadlineAt: string | null;
+  additionalTurns: {
+    first: number | null;
+    second: number | null;
+  };
+}
+
+interface PendingIntent {
+  team: Team;
+  clientId: string;
+  commands: GameCommand[];
+  submittedAt: string;
+}
+
+interface MatchSnapshot {
+  schemaVersion: 1;
+  roomCode: string;
+  content: ContentInfo;
+  status: RoomStatus;
+  createdAt: string;
+  updatedAt: string;
+  players: Partial<Record<Team, PlayerSeat>>;
+  spectatorCount: number;
+  turn: TurnInfo;
+  game: FootballChessGameState;
+  pendingIntents: Partial<Record<Team, PendingIntent>>;
+  lastResolution?: {
+    turn: TurnInfo;
+    resolvedAt: string;
+    events: TurnEvent[];
+    logs: string[];
+  };
+  eventSeq: number;
+}
+
+interface ClientSession {
+  clientId: string;
+  role: SeatRole;
+  displayName: string;
+  joinedAt: string;
+}
+
+interface ServerEnvelope {
+  type: string;
+  roomCode: string;
+  seq: number;
+  payload: unknown;
+}
+
+interface PresenceInfo {
+  connections: number;
+  spectators: number;
+  status: RoomStatus;
+  inputDeadlineAt: string | null;
+  pendingTeams: Team[];
+  players: Partial<
+    Record<
+      Team,
+      {
+        displayName: string;
+        connected: boolean;
+        lastSeenAt: string;
+      }
+    >
+  >;
+}
+
+const API_PREFIX = "/api/universofutbol/football-chess";
+const ROOM_CODE_RE = /^[A-Z0-9-]{4,24}$/;
+const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+const TURN_INPUT_TIMEOUT_MS = 3 * 60 * 1000;
+
+function json(data: unknown, init: ResponseInit = {}): Response {
+  return Response.json(data, {
+    ...init,
+    headers: {
+      "access-control-allow-origin": "*",
+      "access-control-allow-methods": "GET,POST,OPTIONS",
+      "access-control-allow-headers": "content-type",
+      ...init.headers,
+    },
+  });
+}
+
+function problem(status: number, message: string): Response {
+  return json({ error: message }, { status });
+}
+
+function normalizeRoomCode(value: string): string | null {
+  const roomCode = value.trim().toUpperCase();
+  return ROOM_CODE_RE.test(roomCode) ? roomCode : null;
+}
+
+function createRoomCode(): string {
+  const bytes = new Uint8Array(8);
+  crypto.getRandomValues(bytes);
+  let suffix = "";
+  for (const byte of bytes) suffix += ROOM_ALPHABET[byte % ROOM_ALPHABET.length];
+  return `FC-${suffix.slice(0, 4)}-${suffix.slice(4, 8)}`;
+}
+
+function contentInfo(env: Env): ContentInfo {
+  return {
+    property: "UniversoFutbol",
+    slug: env.CONTENT_SLUG,
+    title: "Football Chess",
+    basePath: env.PUBLIC_BASE_PATH,
+    universoFutbolUrl: env.UNIVERSO_FUTBOL_URL,
+  };
+}
+
+function joinUrl(env: Env, roomCode: string): string {
+  return `${env.PUBLIC_BASE_PATH}?room=${encodeURIComponent(roomCode)}`;
+}
+
+function parseJsonObject(text: string): Record<string, unknown> | null {
+  try {
+    const value: unknown = JSON.parse(text);
+    if (value && typeof value === "object" && !Array.isArray(value)) {
+      return value as Record<string, unknown>;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+function stringField(value: unknown, fallback: string, maxLength = 48): string {
+  if (typeof value !== "string") return fallback;
+  const trimmed = value.trim();
+  return trimmed.length > 0 ? trimmed.slice(0, maxLength) : fallback;
+}
+
+function roleField(value: unknown): SeatRole | "auto" {
+  return value === "b" || value === "r" || value === "spectator" ? value : "auto";
+}
+
+function teamField(value: unknown): Team | null {
+  return value === "b" || value === "r" ? value : null;
+}
+
+function roomStub(env: Env, roomCode: string): DurableObjectStub<MatchRoom> {
+  return env.MATCH_ROOM.getByName(roomCode);
+}
+
+async function handleApi(request: Request, env: Env): Promise<Response> {
+  const url = new URL(request.url);
+
+  if (request.method === "OPTIONS") return json({ ok: true });
+
+  if (url.pathname === `${API_PREFIX}/health` && request.method === "GET") {
+    return json({
+      ok: true,
+      content: contentInfo(env),
+      environment: env.ENVIRONMENT,
+    });
+  }
+
+  if (url.pathname === `${API_PREFIX}/matches` && request.method === "POST") {
+    const roomCode = createRoomCode();
+    const snapshot = await roomStub(env, roomCode).getSnapshot(roomCode, contentInfo(env));
+    return json({ roomCode, joinUrl: joinUrl(env, roomCode), snapshot }, { status: 201 });
+  }
+
+  const match = url.pathname.match(new RegExp(`^${API_PREFIX}/matches/([^/]+)(/socket)?$`));
+  if (!match) return problem(404, "Not found");
+
+  const roomCode = normalizeRoomCode(decodeURIComponent(match[1]));
+  if (!roomCode) return problem(400, "Invalid room code");
+
+  const isSocket = match[2] === "/socket";
+  if (isSocket) return roomStub(env, roomCode).fetch(request);
+
+  if (request.method === "GET") {
+    const snapshot = await roomStub(env, roomCode).getSnapshot(roomCode, contentInfo(env));
+    return json({ roomCode, joinUrl: joinUrl(env, roomCode), snapshot });
+  }
+
+  return problem(405, "Method not allowed");
+}
+
+export class MatchRoom extends DurableObject<Env> {
+  constructor(ctx: DurableObjectState, env: Env) {
+    super(ctx, env);
+    ctx.blockConcurrencyWhile(async () => {
+      this.ctx.storage.sql.exec(`
+        CREATE TABLE IF NOT EXISTS room_state (
+          key TEXT PRIMARY KEY,
+          value TEXT NOT NULL
+        )
+      `);
+      this.ctx.storage.sql.exec(`
+        CREATE TABLE IF NOT EXISTS room_events (
+          seq INTEGER PRIMARY KEY,
+          type TEXT NOT NULL,
+          payload TEXT NOT NULL,
+          created_at TEXT NOT NULL
+        )
+      `);
+    });
+  }
+
+  async fetch(request: Request): Promise<Response> {
+    const upgrade = request.headers.get("Upgrade");
+    if (upgrade !== "websocket") return problem(426, "Expected WebSocket upgrade");
+
+    const url = new URL(request.url);
+    const roomCode = this.roomCodeFromUrl(url);
+    if (!roomCode) return problem(400, "Invalid room code");
+
+    const clientId = stringField(url.searchParams.get("clientId"), crypto.randomUUID(), 64);
+    const displayName = stringField(url.searchParams.get("name"), "Player");
+    const requestedRole = roleField(url.searchParams.get("role"));
+    const assigned = this.assignSeat(roomCode, clientId, displayName, requestedRole);
+
+    const pair = new WebSocketPair();
+    const [client, server] = Object.values(pair);
+    const session: ClientSession = {
+      clientId,
+      role: assigned.role,
+      displayName,
+      joinedAt: new Date().toISOString(),
+    };
+    server.serializeAttachment(session);
+    this.ctx.acceptWebSocket(server);
+
+    this.send(server, "room.assigned", roomCode, {
+      clientId,
+      role: assigned.role,
+      displayName,
+      snapshot: assigned.snapshot,
+      presence: this.presence(assigned.snapshot),
+    });
+    this.broadcast(roomCode, "room.presence", this.presence(assigned.snapshot), server);
+
+    return new Response(null, { status: 101, webSocket: client });
+  }
+
+  async alarm(): Promise<void> {
+    const snapshot = this.readSnapshot();
+    if (!snapshot) return;
+
+    const deadlineMs = snapshot.turn.inputDeadlineAt ? Date.parse(snapshot.turn.inputDeadlineAt) : NaN;
+    if (!Number.isFinite(deadlineMs)) return;
+
+    if (Date.now() < deadlineMs) {
+      await this.ctx.storage.setAlarm(deadlineMs);
+      return;
+    }
+
+    const hasPendingIntent = Boolean(snapshot.pendingIntents.b || snapshot.pendingIntents.r);
+    if (!hasPendingIntent) {
+      snapshot.turn.inputDeadlineAt = null;
+      this.writeSnapshot(snapshot);
+      return;
+    }
+
+    await this.resolvePendingTurn(snapshot, this.copyTurnInfo(snapshot.turn), "timeout");
+  }
+
+  getSnapshot(roomCode: string, content: ContentInfo): MatchSnapshot {
+    const current = this.readSnapshot();
+    if (current) return current;
+
+    const now = new Date().toISOString();
+    const snapshot: MatchSnapshot = {
+      schemaVersion: 1,
+      roomCode,
+      content,
+      status: "waiting",
+      createdAt: now,
+      updatedAt: now,
+      players: {},
+      spectatorCount: 0,
+      turn: { half: "first", index: 1, inputDeadlineAt: null, additionalTurns: { first: null, second: null } },
+      game: createInitialGameState("b", `match:${roomCode}`),
+      pendingIntents: {},
+      eventSeq: 0,
+    };
+    this.writeSnapshot(snapshot);
+    return snapshot;
+  }
+
+  private roomCodeFromUrl(url: URL): string | null {
+    const match = url.pathname.match(/\/matches\/([^/]+)\/socket$/);
+    if (!match) return normalizeRoomCode(url.searchParams.get("room") ?? "");
+    return normalizeRoomCode(decodeURIComponent(match[1]));
+  }
+
+  private readSnapshot(): MatchSnapshot | null {
+    const row = this.ctx.storage.sql
+      .exec<{ value: string }>("SELECT value FROM room_state WHERE key = 'snapshot'")
+      .toArray()[0];
+    if (!row) return null;
+    const snapshot = JSON.parse(row.value) as MatchSnapshot;
+    snapshot.game = normalizeGameState(snapshot.game, "b", `match:${snapshot.roomCode}`);
+    snapshot.pendingIntents ??= {};
+    snapshot.turn.additionalTurns ??= { first: null, second: null };
+    snapshot.turn.additionalTurns.first ??= null;
+    snapshot.turn.additionalTurns.second ??= null;
+    return snapshot;
+  }
+
+  private writeSnapshot(snapshot: MatchSnapshot): void {
+    snapshot.updatedAt = new Date().toISOString();
+    this.ctx.storage.sql.exec(
+      "INSERT OR REPLACE INTO room_state (key, value) VALUES ('snapshot', ?)",
+      JSON.stringify(snapshot),
+    );
+  }
+
+  private appendEvent(snapshot: MatchSnapshot, type: string, payload: unknown): void {
+    snapshot.eventSeq += 1;
+    const createdAt = new Date().toISOString();
+    this.ctx.storage.sql.exec(
+      "INSERT INTO room_events (seq, type, payload, created_at) VALUES (?, ?, ?, ?)",
+      snapshot.eventSeq,
+      type,
+      JSON.stringify(payload),
+      createdAt,
+    );
+    this.writeSnapshot(snapshot);
+  }
+
+  private copyTurnInfo(turn: TurnInfo): TurnInfo {
+    return {
+      ...turn,
+      additionalTurns: { ...turn.additionalTurns },
+    };
+  }
+
+  private pushResolutionEvent(resolution: TurnResolution, event: Omit<TurnEvent, "seq">): void {
+    resolution.events.push({
+      seq: resolution.events.length + 1,
+      ...event,
+    });
+  }
+
+  private advanceMatchClock(snapshot: MatchSnapshot, resolution: TurnResolution): void {
+    snapshot.turn.index += 1;
+    snapshot.turn.inputDeadlineAt = null;
+
+    if (snapshot.turn.half === "first") {
+      if (snapshot.turn.additionalTurns.first === null && snapshot.turn.index > REGULAR_TURNS) {
+        const additionalTurns = rollIntInclusive(snapshot.game, 0, 1);
+        snapshot.turn.additionalTurns.first = additionalTurns;
+        this.pushResolutionEvent(resolution, {
+          type: "additional-time",
+          details: { half: "first", turns: additionalTurns },
+        });
+        resolution.logs.push(`First-half additional time: ${additionalTurns}`);
+      }
+
+      const firstTotal = REGULAR_TURNS + (snapshot.turn.additionalTurns.first ?? 0);
+      if (snapshot.turn.index > firstTotal) {
+        const kickoffTeam = opponentTeam(snapshot.game.firstKickTeam);
+        setupKickoffForTeam(snapshot.game, kickoffTeam);
+        snapshot.turn.half = "second";
+        snapshot.turn.index = 1;
+        this.pushResolutionEvent(resolution, {
+          type: "halftime",
+          team: kickoffTeam,
+          details: { kickoffTeam, additionalTurns: { ...snapshot.turn.additionalTurns } },
+        });
+        this.pushResolutionEvent(resolution, {
+          type: "kickoff",
+          team: kickoffTeam,
+          details: { afterHalftime: true },
+        });
+        resolution.logs.push(`Halftime; second half kickoff by ${kickoffTeam}`);
+      }
+      return;
+    }
+
+    if (snapshot.turn.additionalTurns.second === null && snapshot.turn.index > REGULAR_TURNS) {
+      const additionalTurns = rollIntInclusive(snapshot.game, 1, 3);
+      snapshot.turn.additionalTurns.second = additionalTurns;
+      this.pushResolutionEvent(resolution, {
+        type: "additional-time",
+        details: { half: "second", turns: additionalTurns },
+      });
+      resolution.logs.push(`Second-half additional time: ${additionalTurns}`);
+    }
+
+    const secondTotal = REGULAR_TURNS + (snapshot.turn.additionalTurns.second ?? 0);
+    if (snapshot.turn.index > secondTotal) {
+      snapshot.status = "finished";
+      this.pushResolutionEvent(resolution, {
+        type: "fulltime",
+        details: {
+          score: { ...snapshot.game.score },
+          additionalTurns: { ...snapshot.turn.additionalTurns },
+        },
+      });
+      resolution.logs.push("Full time");
+    }
+  }
+
+  private updateRoomStatus(snapshot: MatchSnapshot): void {
+    if (snapshot.status === "finished") return;
+    const bothConnected = Boolean(snapshot.players.b?.connected && snapshot.players.r?.connected);
+    snapshot.status = bothConnected ? "ready" : "waiting";
+  }
+
+  private assignSeat(
+    roomCode: string,
+    clientId: string,
+    displayName: string,
+    requestedRole: SeatRole | "auto",
+  ): { role: SeatRole; snapshot: MatchSnapshot } {
+    const snapshot = this.getSnapshot(roomCode, contentInfo(this.env));
+    const now = new Date().toISOString();
+    const preferredRoles: SeatRole[] =
+      requestedRole === "auto" ? ["b", "r", "spectator"] : [requestedRole, "spectator"];
+
+    let assignedRole: SeatRole = "spectator";
+    let seatEventType = "seat.assigned";
+    for (const role of preferredRoles) {
+      if (role === "spectator") {
+        assignedRole = "spectator";
+        break;
+      }
+      const occupied = snapshot.players[role];
+      if (!occupied || occupied.clientId === clientId || !occupied.connected) {
+        if (occupied?.clientId === clientId && !occupied.connected) {
+          seatEventType = "seat.reconnected";
+        } else if (occupied && occupied.clientId !== clientId) {
+          seatEventType = "seat.reclaimed";
+          delete snapshot.pendingIntents[role];
+        }
+        snapshot.players[role] = {
+          clientId,
+          displayName,
+          connected: true,
+          joinedAt: occupied?.clientId === clientId ? occupied.joinedAt : now,
+          lastSeenAt: now,
+        };
+        assignedRole = role;
+        break;
+      }
+    }
+
+    if (assignedRole === "spectator") snapshot.spectatorCount = this.spectatorCount() + 1;
+    this.updateRoomStatus(snapshot);
+    this.appendEvent(snapshot, seatEventType, { clientId, displayName, role: assignedRole });
+    return { role: assignedRole, snapshot };
+  }
+
+  async webSocketMessage(ws: WebSocket, message: string | ArrayBuffer): Promise<void> {
+    if (typeof message !== "string") return;
+    const packet = parseJsonObject(message);
+    if (!packet) {
+      this.sendError(ws, "Invalid JSON message");
+      return;
+    }
+
+    const type = stringField(packet.type, "", 64);
+    if (type === "ping") {
+      const roomCode = this.readSnapshot()?.roomCode ?? "unknown";
+      this.send(ws, "pong", roomCode, { t: Date.now() });
+      return;
+    }
+
+    if (type === "client.hello") {
+      this.handleHello(ws, packet);
+      return;
+    }
+
+    if (type === "match.intent") {
+      await this.handleIntent(ws, packet);
+      return;
+    }
+
+    this.sendError(ws, `Unsupported message type: ${type}`);
+  }
+
+  async webSocketClose(ws: WebSocket): Promise<void> {
+    const session = this.session(ws);
+    if (!session) return;
+    const snapshot = this.readSnapshot();
+    if (!snapshot) return;
+
+    if (session.role === "b" || session.role === "r") {
+      const seat = snapshot.players[session.role];
+      if (seat?.clientId === session.clientId && this.connectionsFor(session.clientId).length <= 1) {
+        seat.connected = false;
+        seat.lastSeenAt = new Date().toISOString();
+        this.updateRoomStatus(snapshot);
+        this.appendEvent(snapshot, "seat.disconnected", {
+          clientId: session.clientId,
+          role: session.role,
+        });
+        this.broadcast(snapshot.roomCode, "room.presence", this.presence(snapshot));
+      }
+    }
+  }
+
+  private handleHello(ws: WebSocket, packet: Record<string, unknown>): void {
+    const session = this.session(ws);
+    const snapshot = this.readSnapshot();
+    if (!session || !snapshot) return;
+
+    const displayName = stringField(packet.displayName, session.displayName);
+    const role = session.role;
+    if (role === "b" || role === "r") {
+      const seat = snapshot.players[role];
+      if (seat?.clientId === session.clientId) {
+        seat.displayName = displayName;
+        seat.connected = true;
+        seat.lastSeenAt = new Date().toISOString();
+      }
+    }
+
+    ws.serializeAttachment({ ...session, displayName });
+    this.updateRoomStatus(snapshot);
+    this.appendEvent(snapshot, "client.hello", { clientId: session.clientId, role, displayName });
+    this.send(ws, "room.snapshot", snapshot.roomCode, snapshot);
+    this.broadcast(snapshot.roomCode, "room.presence", this.presence(snapshot), ws);
+  }
+
+  private async handleIntent(ws: WebSocket, packet: Record<string, unknown>): Promise<void> {
+    const session = this.session(ws);
+    const snapshot = this.readSnapshot();
+    if (!session || !snapshot) return;
+
+    if (snapshot.status === "finished") {
+      this.sendError(ws, "This match has already finished");
+      return;
+    }
+
+    const team = teamField(packet.team) ?? (session.role === "b" || session.role === "r" ? session.role : null);
+    if (!team || session.role !== team) {
+      this.sendError(ws, "Only seated players can submit intents for their team");
+      return;
+    }
+
+    const validation = validateCommandsForTeam(snapshot.game, team, packet.commands);
+    if (!validation.ok) {
+      this.sendError(ws, validation.errors.join("; "));
+      return;
+    }
+    const intent: PendingIntent = {
+      team,
+      clientId: session.clientId,
+      commands: validation.commands,
+      submittedAt: new Date().toISOString(),
+    };
+    snapshot.pendingIntents[team] = intent;
+    const bothReady = Boolean(snapshot.pendingIntents.b && snapshot.pendingIntents.r);
+
+    if (bothReady) {
+      await this.resolvePendingTurn(snapshot, this.copyTurnInfo(snapshot.turn), "both-ready");
+      return;
+    }
+
+    if (!snapshot.turn.inputDeadlineAt) {
+      const deadlineMs = Date.now() + TURN_INPUT_TIMEOUT_MS;
+      snapshot.turn.inputDeadlineAt = new Date(deadlineMs).toISOString();
+      await this.ctx.storage.setAlarm(deadlineMs);
+    }
+    this.updateRoomStatus(snapshot);
+    this.appendEvent(snapshot, "match.intent", {
+      team,
+      clientId: session.clientId,
+      commandCount: validation.commands.length,
+      inputDeadlineAt: snapshot.turn.inputDeadlineAt,
+    });
+    this.broadcast(snapshot.roomCode, "match.intent.received", {
+      team,
+      commandCount: validation.commands.length,
+      bothReady,
+      inputDeadlineAt: snapshot.turn.inputDeadlineAt,
+      snapshot,
+    });
+  }
+
+  private async resolvePendingTurn(
+    snapshot: MatchSnapshot,
+    resolvedTurn: TurnInfo,
+    reason: "both-ready" | "timeout",
+  ): Promise<TurnResolution> {
+    snapshot.status = "playing";
+    const resolution = this.resolveTurn(snapshot);
+    snapshot.pendingIntents = {};
+    this.advanceMatchClock(snapshot, resolution);
+    snapshot.lastResolution = {
+      turn: resolvedTurn,
+      resolvedAt: new Date().toISOString(),
+      events: resolution.events,
+      logs: resolution.logs,
+    };
+    await this.ctx.storage.deleteAlarm();
+    this.updateRoomStatus(snapshot);
+    this.appendEvent(snapshot, "match.turn.resolved", {
+      turn: resolvedTurn,
+      eventCount: resolution.events.length,
+      score: resolution.game.score,
+      reason,
+    });
+    this.broadcast(snapshot.roomCode, "match.turn.resolved", {
+      turn: resolvedTurn,
+      resolution,
+      snapshot,
+      reason,
+    });
+    return resolution;
+  }
+
+  private resolveTurn(snapshot: MatchSnapshot): TurnResolution {
+    const resolution = resolveServerTurn(snapshot.game, {
+      b: snapshot.pendingIntents.b?.commands ?? [],
+      r: snapshot.pendingIntents.r?.commands ?? [],
+    });
+    snapshot.game = resolution.game;
+    return resolution;
+  }
+
+  private session(ws: WebSocket): ClientSession | null {
+    const attachment = ws.deserializeAttachment();
+    if (!attachment || typeof attachment !== "object") return null;
+    const value = attachment as Partial<ClientSession>;
+    if (!value.clientId || !value.role || !value.displayName || !value.joinedAt) return null;
+    return {
+      clientId: value.clientId,
+      role: value.role,
+      displayName: value.displayName,
+      joinedAt: value.joinedAt,
+    };
+  }
+
+  private connectionsFor(clientId: string): WebSocket[] {
+    return this.ctx
+      .getWebSockets()
+      .filter((socket) => this.session(socket)?.clientId === clientId);
+  }
+
+  private spectatorCount(): number {
+    return this.ctx.getWebSockets().filter((socket) => this.session(socket)?.role === "spectator").length;
+  }
+
+  private presence(snapshot = this.readSnapshot()): PresenceInfo {
+    const players: PresenceInfo["players"] = {};
+    if (snapshot?.players.b) {
+      players.b = {
+        displayName: snapshot.players.b.displayName,
+        connected: snapshot.players.b.connected,
+        lastSeenAt: snapshot.players.b.lastSeenAt,
+      };
+    }
+    if (snapshot?.players.r) {
+      players.r = {
+        displayName: snapshot.players.r.displayName,
+        connected: snapshot.players.r.connected,
+        lastSeenAt: snapshot.players.r.lastSeenAt,
+      };
+    }
+    return {
+      connections: this.ctx.getWebSockets().length,
+      spectators: this.spectatorCount(),
+      status: snapshot?.status ?? "waiting",
+      inputDeadlineAt: snapshot?.turn.inputDeadlineAt ?? null,
+      pendingTeams: (["b", "r"] as Team[]).filter((team) => Boolean(snapshot?.pendingIntents[team])),
+      players,
+    };
+  }
+
+  private send(ws: WebSocket, type: string, roomCode: string, payload: unknown): void {
+    const snapshot = this.readSnapshot();
+    const envelope: ServerEnvelope = {
+      type,
+      roomCode,
+      seq: snapshot?.eventSeq ?? 0,
+      payload,
+    };
+    ws.send(JSON.stringify(envelope));
+  }
+
+  private sendError(ws: WebSocket, message: string): void {
+    const roomCode = this.readSnapshot()?.roomCode ?? "unknown";
+    this.send(ws, "room.error", roomCode, { message });
+  }
+
+  private broadcast(roomCode: string, type: string, payload: unknown, except?: WebSocket): void {
+    for (const socket of this.ctx.getWebSockets()) {
+      if (socket === except) continue;
+      this.send(socket, type, roomCode, payload);
+    }
+  }
+}
+
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const url = new URL(request.url);
+
+    try {
+      if (url.pathname === "/") {
+        return json({
+          name: "UniversoFutbol Football Chess",
+          api: API_PREFIX,
+          content: contentInfo(env),
+        });
+      }
+
+      if (url.pathname.startsWith(API_PREFIX)) {
+        return handleApi(request, env);
+      }
+
+      return problem(404, "Not found");
+    } catch (error) {
+      console.error(
+        JSON.stringify({
+          level: "error",
+          message: "Request failed",
+          error: error instanceof Error ? error.message : String(error),
+          path: url.pathname,
+        }),
+      );
+      return problem(500, "Internal Server Error");
+    }
+  },
+};

@@ -1,0 +1,17 @@
+{
+  "name": "universofutbol-football-chess",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Football Chess web prototype and Cloudflare multiplayer room backend for UniversoFutbol.",
+  "type": "module",
+  "scripts": {
+    "check:worker": "tsc --noEmit",
+    "dev:worker": "wrangler dev --port 8787",
+    "deploy:worker": "wrangler deploy",
+    "cf:types": "wrangler types src/worker-configuration.d.ts"
+  },
+  "devDependencies": {
+    "typescript": "latest",
+    "wrangler": "latest"
+  }
+}
