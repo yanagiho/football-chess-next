@@ -58,11 +58,13 @@ interface MatchSnapshot {
   status: RoomStatus;
   createdAt: string;
   updatedAt: string;
+  cleanupAt: string | null;
   players: Partial<Record<Team, PlayerSeat>>;
   spectatorCount: number;
   turn: TurnInfo;
   game: FootballChessGameState;
   pendingIntents: Partial<Record<Team, PendingIntent>>;
+  rematchRequests: Partial<Record<Team, string>>;
   lastResolution?: {
     turn: TurnInfo;
     resolvedAt: string;
@@ -108,6 +110,8 @@ const API_PREFIX = "/api/universofutbol/football-chess";
 const ROOM_CODE_RE = /^[A-Z0-9-]{4,24}$/;
 const ROOM_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
 const TURN_INPUT_TIMEOUT_MS = 3 * 60 * 1000;
+const ROOM_IDLE_CLEANUP_MS = 30 * 60 * 1000;
+const FINISHED_ROOM_CLEANUP_MS = 6 * 60 * 60 * 1000;
 
 function json(data: unknown, init: ResponseInit = {}): Response {
   return Response.json(data, {
@@ -250,7 +254,7 @@ export class MatchRoom extends DurableObject<Env> {
     const clientId = stringField(url.searchParams.get("clientId"), crypto.randomUUID(), 64);
     const displayName = stringField(url.searchParams.get("name"), "Player");
     const requestedRole = roleField(url.searchParams.get("role"));
-    const assigned = this.assignSeat(roomCode, clientId, displayName, requestedRole);
+    const assigned = await this.assignSeat(roomCode, clientId, displayName, requestedRole);
 
     const pair = new WebSocketPair();
     const [client, server] = Object.values(pair);
@@ -279,11 +283,27 @@ export class MatchRoom extends DurableObject<Env> {
     const snapshot = this.readSnapshot();
     if (!snapshot) return;
 
+    const cleanupMs = snapshot.cleanupAt ? Date.parse(snapshot.cleanupAt) : NaN;
+    if (Number.isFinite(cleanupMs) && Date.now() >= cleanupMs) {
+      if (this.connectionCount() === 0) {
+        this.clearRoomStorage();
+        await this.ctx.storage.deleteAlarm();
+        return;
+      }
+      snapshot.cleanupAt = null;
+      this.writeSnapshot(snapshot);
+      await this.armNextAlarm(snapshot);
+      return;
+    }
+
     const deadlineMs = snapshot.turn.inputDeadlineAt ? Date.parse(snapshot.turn.inputDeadlineAt) : NaN;
-    if (!Number.isFinite(deadlineMs)) return;
+    if (!Number.isFinite(deadlineMs)) {
+      await this.armNextAlarm(snapshot);
+      return;
+    }
 
     if (Date.now() < deadlineMs) {
-      await this.ctx.storage.setAlarm(deadlineMs);
+      await this.armNextAlarm(snapshot);
       return;
     }
 
@@ -291,15 +311,23 @@ export class MatchRoom extends DurableObject<Env> {
     if (!hasPendingIntent) {
       snapshot.turn.inputDeadlineAt = null;
       this.writeSnapshot(snapshot);
+      await this.armNextAlarm(snapshot);
       return;
     }
 
     await this.resolvePendingTurn(snapshot, this.copyTurnInfo(snapshot.turn), "timeout");
   }
 
-  getSnapshot(roomCode: string, content: ContentInfo): MatchSnapshot {
+  async getSnapshot(roomCode: string, content: ContentInfo): Promise<MatchSnapshot> {
     const current = this.readSnapshot();
-    if (current) return current;
+    if (current) {
+      if (this.connectionCount() === 0 && !current.cleanupAt) {
+        current.cleanupAt = this.cleanupDate(current).toISOString();
+        this.writeSnapshot(current);
+      }
+      await this.armNextAlarm(current);
+      return current;
+    }
 
     const now = new Date().toISOString();
     const snapshot: MatchSnapshot = {
@@ -309,14 +337,17 @@ export class MatchRoom extends DurableObject<Env> {
       status: "waiting",
       createdAt: now,
       updatedAt: now,
+      cleanupAt: new Date(Date.now() + ROOM_IDLE_CLEANUP_MS).toISOString(),
       players: {},
       spectatorCount: 0,
       turn: { half: "first", index: 1, inputDeadlineAt: null, additionalTurns: { first: null, second: null } },
       game: createInitialGameState("b", `match:${roomCode}`),
       pendingIntents: {},
+      rematchRequests: {},
       eventSeq: 0,
     };
     this.writeSnapshot(snapshot);
+    await this.armNextAlarm(snapshot);
     return snapshot;
   }
 
@@ -333,7 +364,10 @@ export class MatchRoom extends DurableObject<Env> {
     if (!row) return null;
     const snapshot = JSON.parse(row.value) as MatchSnapshot;
     snapshot.game = normalizeGameState(snapshot.game, "b", `match:${snapshot.roomCode}`);
+    snapshot.players ??= {};
     snapshot.pendingIntents ??= {};
+    snapshot.rematchRequests ??= {};
+    snapshot.cleanupAt ??= null;
     snapshot.turn.additionalTurns ??= { first: null, second: null };
     snapshot.turn.additionalTurns.first ??= null;
     snapshot.turn.additionalTurns.second ??= null;
@@ -346,6 +380,58 @@ export class MatchRoom extends DurableObject<Env> {
       "INSERT OR REPLACE INTO room_state (key, value) VALUES ('snapshot', ?)",
       JSON.stringify(snapshot),
     );
+  }
+
+  private cleanupDate(snapshot: MatchSnapshot): Date {
+    const delay = snapshot.status === "finished" ? FINISHED_ROOM_CLEANUP_MS : ROOM_IDLE_CLEANUP_MS;
+    return new Date(Date.now() + delay);
+  }
+
+  private cleanupMs(snapshot: MatchSnapshot): number | null {
+    if (!snapshot.cleanupAt) return null;
+    const value = Date.parse(snapshot.cleanupAt);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  private inputDeadlineMs(snapshot: MatchSnapshot): number | null {
+    if (!snapshot.turn.inputDeadlineAt) return null;
+    const value = Date.parse(snapshot.turn.inputDeadlineAt);
+    return Number.isFinite(value) ? value : null;
+  }
+
+  private async armNextAlarm(snapshot: MatchSnapshot): Promise<void> {
+    const alarms = [this.inputDeadlineMs(snapshot), this.cleanupMs(snapshot)].filter(
+      (value): value is number => value !== null,
+    );
+    if (alarms.length === 0) {
+      await this.ctx.storage.deleteAlarm();
+      return;
+    }
+    await this.ctx.storage.setAlarm(Math.min(...alarms));
+  }
+
+  private clearRoomStorage(): void {
+    this.ctx.storage.sql.exec("DELETE FROM room_events");
+    this.ctx.storage.sql.exec("DELETE FROM room_state");
+  }
+
+  private connectionCount(except?: WebSocket): number {
+    return this.ctx.getWebSockets().filter((socket) => socket !== except).length;
+  }
+
+  private async updateLifecycleCleanup(snapshot: MatchSnapshot, except?: WebSocket): Promise<void> {
+    if (this.connectionCount(except) === 0) {
+      snapshot.cleanupAt = this.cleanupDate(snapshot).toISOString();
+      this.writeSnapshot(snapshot);
+      await this.armNextAlarm(snapshot);
+      return;
+    }
+
+    if (snapshot.cleanupAt) {
+      snapshot.cleanupAt = null;
+      this.writeSnapshot(snapshot);
+    }
+    await this.armNextAlarm(snapshot);
   }
 
   private appendEvent(snapshot: MatchSnapshot, type: string, payload: unknown): void {
@@ -441,13 +527,13 @@ export class MatchRoom extends DurableObject<Env> {
     snapshot.status = bothConnected ? "ready" : "waiting";
   }
 
-  private assignSeat(
+  private async assignSeat(
     roomCode: string,
     clientId: string,
     displayName: string,
     requestedRole: SeatRole | "auto",
-  ): { role: SeatRole; snapshot: MatchSnapshot } {
-    const snapshot = this.getSnapshot(roomCode, contentInfo(this.env));
+  ): Promise<{ role: SeatRole; snapshot: MatchSnapshot }> {
+    const snapshot = await this.getSnapshot(roomCode, contentInfo(this.env));
     const now = new Date().toISOString();
     const preferredRoles: SeatRole[] =
       requestedRole === "auto" ? ["b", "r", "spectator"] : [requestedRole, "spectator"];
@@ -466,6 +552,7 @@ export class MatchRoom extends DurableObject<Env> {
         } else if (occupied && occupied.clientId !== clientId) {
           seatEventType = "seat.reclaimed";
           delete snapshot.pendingIntents[role];
+          delete snapshot.rematchRequests[role];
         }
         snapshot.players[role] = {
           clientId,
@@ -480,8 +567,10 @@ export class MatchRoom extends DurableObject<Env> {
     }
 
     if (assignedRole === "spectator") snapshot.spectatorCount = this.spectatorCount() + 1;
+    snapshot.cleanupAt = null;
     this.updateRoomStatus(snapshot);
     this.appendEvent(snapshot, seatEventType, { clientId, displayName, role: assignedRole });
+    await this.armNextAlarm(snapshot);
     return { role: assignedRole, snapshot };
   }
 
@@ -510,6 +599,21 @@ export class MatchRoom extends DurableObject<Env> {
       return;
     }
 
+    if (type === "match.leave") {
+      await this.handleLeave(ws);
+      return;
+    }
+
+    if (type === "match.resign") {
+      await this.handleResign(ws);
+      return;
+    }
+
+    if (type === "match.rematch.request") {
+      await this.handleRematchRequest(ws);
+      return;
+    }
+
     this.sendError(ws, `Unsupported message type: ${type}`);
   }
 
@@ -519,9 +623,10 @@ export class MatchRoom extends DurableObject<Env> {
     const snapshot = this.readSnapshot();
     if (!snapshot) return;
 
+    let shouldBroadcastPresence = false;
     if (session.role === "b" || session.role === "r") {
       const seat = snapshot.players[session.role];
-      if (seat?.clientId === session.clientId && this.connectionsFor(session.clientId).length <= 1) {
+      if (seat?.clientId === session.clientId && seat.connected && this.connectionsFor(session.clientId).length <= 1) {
         seat.connected = false;
         seat.lastSeenAt = new Date().toISOString();
         this.updateRoomStatus(snapshot);
@@ -529,8 +634,17 @@ export class MatchRoom extends DurableObject<Env> {
           clientId: session.clientId,
           role: session.role,
         });
-        this.broadcast(snapshot.roomCode, "room.presence", this.presence(snapshot));
+        shouldBroadcastPresence = true;
       }
+    } else if (session.role === "spectator") {
+      snapshot.spectatorCount = this.spectatorCount(ws);
+      this.writeSnapshot(snapshot);
+      shouldBroadcastPresence = true;
+    }
+
+    await this.updateLifecycleCleanup(snapshot, ws);
+    if (shouldBroadcastPresence) {
+      this.broadcast(snapshot.roomCode, "room.presence", this.presence(snapshot, ws), ws);
     }
   }
 
@@ -554,7 +668,129 @@ export class MatchRoom extends DurableObject<Env> {
     this.updateRoomStatus(snapshot);
     this.appendEvent(snapshot, "client.hello", { clientId: session.clientId, role, displayName });
     this.send(ws, "room.snapshot", snapshot.roomCode, snapshot);
-    this.broadcast(snapshot.roomCode, "room.presence", this.presence(snapshot), ws);
+    this.broadcast(snapshot.roomCode, "room.presence", this.presence(snapshot));
+  }
+
+  private async handleLeave(ws: WebSocket): Promise<void> {
+    const session = this.session(ws);
+    const snapshot = this.readSnapshot();
+    if (!session || !snapshot) return;
+
+    if (session.role === "b" || session.role === "r") {
+      const seat = snapshot.players[session.role];
+      if (seat?.clientId === session.clientId) {
+        delete snapshot.players[session.role];
+        delete snapshot.rematchRequests[session.role];
+        snapshot.pendingIntents = {};
+        snapshot.turn.inputDeadlineAt = null;
+        await this.ctx.storage.deleteAlarm();
+        this.updateRoomStatus(snapshot);
+      }
+    }
+
+    snapshot.spectatorCount = Math.max(0, this.spectatorCount() - (session.role === "spectator" ? 1 : 0));
+    this.appendEvent(snapshot, "seat.left", {
+      clientId: session.clientId,
+      role: session.role,
+    });
+    const payload = {
+      clientId: session.clientId,
+      role: session.role,
+      snapshot,
+      presence: this.presence(snapshot, ws),
+    };
+    this.send(ws, "seat.left", snapshot.roomCode, payload);
+    this.broadcast(snapshot.roomCode, "seat.left", payload, ws);
+    await this.updateLifecycleCleanup(snapshot, ws);
+    ws.close(1000, "left");
+  }
+
+  private async handleResign(ws: WebSocket): Promise<void> {
+    const session = this.session(ws);
+    const snapshot = this.readSnapshot();
+    if (!session || !snapshot) return;
+
+    if (session.role !== "b" && session.role !== "r") {
+      this.sendError(ws, "Only seated players can resign");
+      return;
+    }
+    if (snapshot.status === "finished") {
+      this.sendError(ws, "This match has already finished");
+      return;
+    }
+
+    const team = session.role;
+    const winner = opponentTeam(team);
+    snapshot.pendingIntents = {};
+    snapshot.rematchRequests = {};
+    snapshot.turn.inputDeadlineAt = null;
+    snapshot.status = "finished";
+    await this.ctx.storage.deleteAlarm();
+    this.appendEvent(snapshot, "match.resigned", {
+      team,
+      winner,
+      clientId: session.clientId,
+      score: { ...snapshot.game.score },
+    });
+    this.broadcast(snapshot.roomCode, "match.resigned", {
+      team,
+      winner,
+      snapshot,
+    });
+  }
+
+  private async handleRematchRequest(ws: WebSocket): Promise<void> {
+    const session = this.session(ws);
+    const snapshot = this.readSnapshot();
+    if (!session || !snapshot) return;
+
+    if (session.role !== "b" && session.role !== "r") {
+      this.sendError(ws, "Only seated players can request a rematch");
+      return;
+    }
+    if (snapshot.status !== "finished") {
+      this.sendError(ws, "Rematch is available after the match finishes");
+      return;
+    }
+
+    const team = session.role;
+    snapshot.rematchRequests[team] = new Date().toISOString();
+    const bothRequested = Boolean(snapshot.rematchRequests.b && snapshot.rematchRequests.r);
+
+    if (!bothRequested) {
+      this.appendEvent(snapshot, "match.rematch.requested", {
+        team,
+        clientId: session.clientId,
+      });
+      this.broadcast(snapshot.roomCode, "match.rematch.requested", {
+        team,
+        snapshot,
+      });
+      return;
+    }
+
+    const startedAt = new Date().toISOString();
+    const nextSeed = `match:${snapshot.roomCode}:rematch:${snapshot.eventSeq + 1}`;
+    snapshot.status = snapshot.players.b?.connected && snapshot.players.r?.connected ? "ready" : "waiting";
+    snapshot.turn = {
+      half: "first",
+      index: 1,
+      inputDeadlineAt: null,
+      additionalTurns: { first: null, second: null },
+    };
+    snapshot.game = createInitialGameState("b", nextSeed);
+    snapshot.pendingIntents = {};
+    snapshot.rematchRequests = {};
+    delete snapshot.lastResolution;
+    await this.ctx.storage.deleteAlarm();
+    this.appendEvent(snapshot, "match.rematch.started", {
+      requestedBy: team,
+      startedAt,
+    });
+    this.broadcast(snapshot.roomCode, "match.rematch.started", {
+      requestedBy: team,
+      snapshot,
+    });
   }
 
   private async handleIntent(ws: WebSocket, packet: Record<string, unknown>): Promise<void> {
@@ -673,11 +909,13 @@ export class MatchRoom extends DurableObject<Env> {
       .filter((socket) => this.session(socket)?.clientId === clientId);
   }
 
-  private spectatorCount(): number {
-    return this.ctx.getWebSockets().filter((socket) => this.session(socket)?.role === "spectator").length;
+  private spectatorCount(except?: WebSocket): number {
+    return this.ctx
+      .getWebSockets()
+      .filter((socket) => socket !== except && this.session(socket)?.role === "spectator").length;
   }
 
-  private presence(snapshot = this.readSnapshot()): PresenceInfo {
+  private presence(snapshot = this.readSnapshot(), except?: WebSocket): PresenceInfo {
     const players: PresenceInfo["players"] = {};
     if (snapshot?.players.b) {
       players.b = {
@@ -694,8 +932,8 @@ export class MatchRoom extends DurableObject<Env> {
       };
     }
     return {
-      connections: this.ctx.getWebSockets().length,
-      spectators: this.spectatorCount(),
+      connections: this.connectionCount(except),
+      spectators: this.spectatorCount(except),
       status: snapshot?.status ?? "waiting",
       inputDeadlineAt: snapshot?.turn.inputDeadlineAt ?? null,
       pendingTeams: (["b", "r"] as Team[]).filter((team) => Boolean(snapshot?.pendingIntents[team])),

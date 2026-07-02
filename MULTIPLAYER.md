@@ -22,9 +22,18 @@ The backend increment currently includes:
   - Returns the persisted room snapshot.
 - `GET /api/universofutbol/football-chess/matches/:roomCode/socket`
   - Upgrades to WebSocket and assigns the client to blue, red, or spectator.
+  - Joining clears the room's idle cleanup timer.
 - `match.intent`
   - Validates and stores a player's submitted command list for the current turn.
   - When both blue and red have submitted, the Durable Object resolves the turn and broadcasts `match.turn.resolved`.
+- `match.leave` / `match.resign` / `match.rematch.request`
+  - Allows explicit room exit, immediate resignation, and same-room rematch after full time/resignation.
+  - A seated player leaving clears pending turn input and makes the seat reclaimable.
+  - A rematch starts when both seated players request it, resetting the authoritative game snapshot while keeping the room code.
+- Room lifecycle cleanup
+  - Rooms created but never joined, or rooms with no remaining WebSocket connections, are scheduled for cleanup after 30 minutes.
+  - Finished matches keep their snapshot for 6 hours after the last client leaves, so players can reconnect briefly or inspect the final state.
+  - Spectator disconnects now broadcast fresh presence so the online roster does not retain stale spectator counts.
 - `src/game-core.ts`
   - Extracts the first pure rule core from the HTML prototype: board cells, default teams, ball state, probability helpers, seeded RNG, command validation, and the first server-side turn resolver.
 
@@ -40,15 +49,30 @@ This is still intentionally incremental. The current HTML remains playable and c
   - Connects to the entered room code and accepts blue, red, or spectator assignment.
 - `URL`
   - Copies a `?room=...` share URL. Opening a URL with that parameter auto-joins the room.
+- `退出`
+  - Leaves the room explicitly, clears the local room URL, and frees the player's seat for a later participant.
+- `投了`
+  - Ends the current online match immediately and declares the opponent the winner.
+- `再戦`
+  - Available after full time or resignation. When both seated players request it, the same room starts again from turn 1.
 - Reconnect
   - The browser persists a local client id, so reloads can reclaim the same blue/red seat.
   - Disconnected seats can be reclaimed, and presence updates show opponent/pending status.
+- Roster
+  - The online bar shows blue/red seats, spectator count, the local seat, and pending-submission marks.
+  - Spectators receive the same presence updates, so they can see which seats are occupied and when a player has submitted.
+  - Spectator leave/disconnect updates are also broadcast, keeping the spectator count current.
+  - Spectator clients stay in read-only replay phase after snapshots/resolutions, and their TURN END button is disabled.
+- Display name
+  - The browser stores a local display name, sends it on WebSocket join, and can update it with `client.hello` while connected.
 - Online `TURN END`
   - Sends the local command queue as `match.intent`.
   - Waits for the opponent instead of running the local AI flow.
   - The first submitted intent starts a 3-minute input deadline. If the other side does not submit, the Durable Object resolves the turn with empty commands for the missing side.
 - `match.turn.resolved`
   - Replays representative `TurnEvent` cut-ins/ball flights, then applies the authoritative server snapshot.
+  - `piece.moved` events now animate the moving piece itself, so ordinary move and dribble actions no longer appear as end-of-turn teleports.
+  - Pass completion/failure, throughpass, pass-cut, loose-ball pickup, and offside events update the local replay board before final snapshot sync.
   - Shot goal/block/miss/save events now replay Unity-like shot trails and cut-ins before snapshot sync.
   - Pass-cut events now include the pass origin and replay the ball flight into the cut point, plus any defensive clear movement.
   - Foul events now show the follow-up PK/FK cut-in in the online replay.
@@ -75,5 +99,5 @@ The Durable Object now resolves the first authoritative subset when both players
 
 - Compare the new server resolver against more Unity source edge cases and the current HTML implementation, especially simultaneous edge cases around passive tactics, PK/FK CK loops, and shot-block ordering.
 - Expand browser replay so every server `TurnEvent` maps to the exact Unity-like animation sequence.
-- Add rematch, explicit resign/leave, stronger spectator polish, and production-ready room lifecycle cleanup.
+- Add stronger spectator polish and production deployment hardening.
 - Add production deployment details for the UniversoFutbol route and subscription/member gating.

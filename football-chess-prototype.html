@@ -184,28 +184,45 @@
     transform:translate(-50%,-50%); z-index:5; pointer-events:none;
     background:url(data:image/png;base64,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) center/contain no-repeat; transition:all .25s;}
 
-  .onlineBar{display:grid; grid-template-columns:1fr auto auto auto; gap:6px; align-items:center;
+  .onlineBar{display:grid; grid-template-columns:minmax(0,1fr) minmax(64px,.42fr) auto auto auto; gap:6px; align-items:center;
     padding:7px 10px 0;}
   .onlineInput{min-width:0; height:31px; border:1px solid rgba(255,255,255,.16);
     border-radius:8px; padding:0 9px; color:#d9f2ff; background:rgba(8,15,22,.74);
     font-size:12px; font-weight:800; letter-spacing:.06em; text-transform:uppercase;
     box-shadow:inset 0 1px 2px rgba(0,0,0,.42);}
+  .onlineNameInput{text-transform:none; letter-spacing:0;}
   .onlineMini{height:31px; border:0; border-radius:8px; padding:0 10px; color:#fff;
     font-size:11px; font-weight:900; background:linear-gradient(180deg,#2d4355,#1f2d39);
     box-shadow:0 2px 0 #111920, inset 0 1px 0 rgba(255,255,255,.12);}
   .onlineMini:disabled{opacity:.42; filter:saturate(.55);}
   .onlineMini.primary{background:linear-gradient(180deg,#32c7a7,#16866d); box-shadow:0 2px 0 #0a4f40;}
   .onlineMini.warn{background:linear-gradient(180deg,#5a6470,#313a44);}
+  .onlineMini.danger{background:linear-gradient(180deg,#dd5a5a,#8d2c2c); box-shadow:0 2px 0 #4d1818;}
+  .onlineMini.success{background:linear-gradient(180deg,#4fb45f,#28713a); box-shadow:0 2px 0 #143f20;}
+  .onlineActions{grid-column:1 / -1; display:flex; gap:6px;}
+  .onlineActions .onlineMini{flex:1; min-width:0;}
   .onlineStatus{grid-column:1 / -1; min-height:14px; font-size:10px; color:#9fb0bd;
     white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
   .onlineStatus.live{color:#7ee5cf;}
   .onlineStatus.wait{color:#ffd76d;}
   .onlineStatus.err{color:#ff8a8a;}
+  .onlineRoster{grid-column:1 / -1; display:grid; grid-template-columns:1fr 1fr .8fr; gap:5px; min-height:21px;}
+  .onlineSeat{min-width:0; height:21px; display:flex; align-items:center; justify-content:center; gap:4px;
+    border-radius:7px; background:rgba(255,255,255,.06); color:#cfe3ee; font-size:10px; font-weight:900;
+    white-space:nowrap; overflow:hidden; text-overflow:ellipsis; box-shadow:inset 0 0 0 1px rgba(255,255,255,.08);}
+  .onlineSeat.off{opacity:.55;}
+  .onlineSeat.pending{color:#ffe08a; box-shadow:inset 0 0 0 1px rgba(255,216,80,.42);}
+  .onlineSeat.me{box-shadow:inset 0 0 0 1px rgba(126,229,207,.65), 0 0 8px rgba(126,229,207,.12);}
+  .onlineDot{width:7px; height:7px; flex:0 0 auto; border-radius:50%; background:#798692;}
+  .onlineSeat.b .onlineDot{background:#2f7be0;}
+  .onlineSeat.r .onlineDot{background:#e04545;}
+  .onlineSeat.spec .onlineDot{background:#8ea2b0;}
   .controls{display:flex; gap:8px; padding:0 10px; margin-top:10px;}
   .btn{flex:1; color:#fff; border:none; border-radius:10px; padding:12px 8px;
     font-size:13px; font-weight:800; cursor:pointer; letter-spacing:.02em;
     background:linear-gradient(180deg,#3a4757 0%,#2a3441 100%);
     box-shadow:0 2px 0 #1a222c, inset 0 1px 0 rgba(255,255,255,.15); text-shadow:0 1px 2px rgba(0,0,0,.5);}
+  .btn:disabled{opacity:.5; cursor:default; filter:saturate(.55);}
   .btn:active{transform:translateY(2px); box-shadow:0 0 0 #1a222c;}
   /* TURN END＝青光沢、シュート＝金、実行＝緑 */
   .btn.primary{background:linear-gradient(180deg,#5db6ff 0%,#1f7be0 55%,#1565c0 100%);
@@ -236,9 +253,20 @@
     transform:translate(-50%,-50%) scale(.4); border:2px solid var(--trail);
     box-shadow:0 0 14px var(--glow), inset 0 0 9px rgba(255,255,255,.55);
     animation:ballImpact .2s ease-out forwards;}
+  .piece-flight{position:absolute; left:0; top:0; width:30px; height:30px;
+    transform:translate(-50%,-50%); will-change:transform,opacity,filter;
+    filter:drop-shadow(0 2px 2px rgba(0,0,0,.68)) drop-shadow(0 0 8px var(--pieceGlow));}
+  .piece-flight.b{--pieceGlow:rgba(54,166,255,.72);}
+  .piece-flight.r{--pieceGlow:rgba(255,76,88,.72);}
+  .piece-flight img{width:100%; height:100%; display:block; object-fit:contain;}
+  .piece-step{position:absolute; width:30px; height:18px; border-radius:50%;
+    transform:translate(-50%,-50%) scale(.5); opacity:.45;
+    background:radial-gradient(ellipse, rgba(255,255,255,.52), rgba(255,255,255,0) 68%);
+    filter:blur(.35px); animation:pieceStep .24s ease-out forwards;}
   @keyframes ballFlightSpin{to{transform:rotate(360deg);}}
   @keyframes trailFade{to{opacity:0; transform:translate(var(--dx,0),calc(-50% + var(--dy,0px))) rotate(var(--rot,0deg)) scaleX(.35);}}
   @keyframes ballImpact{to{opacity:0; transform:translate(-50%,-50%) scale(1.45);}}
+  @keyframes pieceStep{to{opacity:0; transform:translate(-50%,-50%) scale(1.35);}}
 
   /* カットイン演出 */
   #cutinLayer{position:fixed; inset:0; z-index:999; pointer-events:none;
@@ -306,10 +334,17 @@
 
   <div class="onlineBar">
     <input class="onlineInput" id="onlineRoomInput" placeholder="ROOM CODE" autocomplete="off">
+    <input class="onlineInput onlineNameInput" id="onlineNameInput" placeholder="NAME" autocomplete="nickname" maxlength="16">
     <button class="onlineMini primary" id="onlineCreateBtn">ROOM作成</button>
     <button class="onlineMini" id="onlineJoinBtn">参加</button>
     <button class="onlineMini warn" id="onlineShareBtn">URL</button>
+    <div class="onlineActions">
+      <button class="onlineMini warn" id="onlineLeaveBtn">退出</button>
+      <button class="onlineMini danger" id="onlineResignBtn">投了</button>
+      <button class="onlineMini success" id="onlineRematchBtn">再戦</button>
+    </div>
     <div class="onlineStatus" id="onlineStatus">OFFLINE</div>
+    <div class="onlineRoster" id="onlineRoster"></div>
   </div>
 
   <!-- ===== フィールド ===== -->
@@ -463,6 +498,60 @@ function animateBallFlight(from,to,team,options={}){
         ballEl.style.opacity='0';
         ballEl.style.transition='opacity .12s ease-out, filter .12s ease-out';
         setTimeout(()=>{ ballEl.remove(); resolve(); },150);
+      }
+    };
+    requestAnimationFrame(step);
+  });
+}
+function showPieceStep(x,y){
+  const layer=ensureBallFxLayer();
+  const el=document.createElement('div');
+  el.className='piece-step';
+  el.style.left=x+'px';
+  el.style.top=y+'px';
+  layer.appendChild(el);
+  setTimeout(()=>el.remove(),260);
+}
+function animatePieceMove(piece,from,to,options={}){
+  const start=cellCenterViewport(from.x,from.y);
+  const end=cellCenterViewport(to.x,to.y);
+  if(!piece||!start||!end) return Promise.resolve();
+  const layer=ensureBallFxLayer();
+  const boardRect=boardEl.getBoundingClientRect();
+  const size=Math.max(20, Math.min(30, (boardRect.width/COLS.length)*.36));
+  const dist=Math.hypot(end.x-start.x,end.y-start.y);
+  const duration=options.duration || Math.max(220, Math.min(380, dist*1.15));
+  const el=document.createElement('div');
+  el.className='piece-flight '+piece.team;
+  el.style.width=size+'px';
+  el.style.height=size+'px';
+  const img=document.createElement('img');
+  img.src=IMG[piece.posType+'_'+piece.team];
+  el.appendChild(img);
+  layer.appendChild(el);
+  return new Promise(resolve=>{
+    let startTime=null;
+    let lastStep=0;
+    const ease=t=>t<.5 ? 2*t*t : 1-Math.pow(-2*t+2,2)/2;
+    const step=now=>{
+      if(startTime===null) startTime=now;
+      const raw=Math.min(1,(now-startTime)/duration);
+      const t=ease(raw);
+      const x=start.x+(end.x-start.x)*t;
+      const y=start.y+(end.y-start.y)*t-Math.sin(Math.PI*raw)*9;
+      const scale=1+.08*Math.sin(Math.PI*raw);
+      el.style.transform=`translate(${x}px,${y}px) translate(-50%,-50%) scale(${scale})`;
+      if(now-lastStep>110){
+        showPieceStep(x,y+size*.26);
+        lastStep=now;
+      }
+      if(raw<1){
+        requestAnimationFrame(step);
+      }else{
+        showPieceStep(end.x,end.y+size*.26);
+        el.style.opacity='0';
+        el.style.transition='opacity .12s ease-out';
+        setTimeout(()=>{ el.remove(); resolve(); },140);
       }
     };
     requestAnimationFrame(step);
@@ -1296,6 +1385,7 @@ let myCommands=[];      // 自分(青)が仕込んだ操作
 let oppCommands=[];     // 相手(赤)が仕込んだ操作
 const ONLINE_API_PREFIX='/api/universofutbol/football-chess';
 const ONLINE_CLIENT_ID_KEY='footballChessOnlineClientId';
+const ONLINE_DISPLAY_NAME_KEY='footballChessOnlineDisplayName';
 function makeOnlineClientId(){ return 'fc-'+Math.random().toString(36).slice(2,10)+'-'+Date.now().toString(36); }
 function getOnlineClientId(){
   try{
@@ -1303,6 +1393,17 @@ function getOnlineClientId(){
     if(!id){ id=makeOnlineClientId(); localStorage.setItem(ONLINE_CLIENT_ID_KEY,id); }
     return id;
   }catch{ return makeOnlineClientId(); }
+}
+function normalizeOnlineDisplayName(value){
+  const text=String(value||'').trim().replace(/\s+/g,' ');
+  return (text||'Player').slice(0,16);
+}
+function getOnlineDisplayName(){
+  try{ return normalizeOnlineDisplayName(localStorage.getItem(ONLINE_DISPLAY_NAME_KEY)||'Player'); }
+  catch{ return 'Player'; }
+}
+function saveOnlineDisplayName(name){
+  try{ localStorage.setItem(ONLINE_DISPLAY_NAME_KEY,normalizeOnlineDisplayName(name)); }catch{}
 }
 const online={
   enabled:false,
@@ -1312,7 +1413,10 @@ const online={
   role:null,
   ws:null,
   clientId:getOnlineClientId(),
+  displayName:getOnlineDisplayName(),
   waiting:false,
+  leaving:false,
+  presence:null,
   status:'OFFLINE',
   statusKind:'',
   queue:Promise.resolve(),
@@ -1351,11 +1455,57 @@ function updateRoomUrl(roomCode){
   history.replaceState(null,'',url.toString());
 }
 function localPlayerTeam(){ return online.enabled && (online.role==='b'||online.role==='r') ? online.role : 'b'; }
+function isOnlineSpectator(){ return online.connected && !online.enabled; }
 function remoteOpponentTeam(){ return localPlayerTeam()==='b' ? 'r' : 'b'; }
 function localTeamLabel(){ return localPlayerTeam()==='b' ? '青' : '赤'; }
 function setOnlineStatus(text,kind=''){
   online.status=text; online.statusKind=kind;
   renderOnlineStatus();
+}
+function syncOnlineDisplayName(options={}){
+  const input=document.getElementById('onlineNameInput');
+  const next=normalizeOnlineDisplayName(input?.value||online.displayName);
+  online.displayName=next;
+  saveOnlineDisplayName(next);
+  if(input && document.activeElement!==input) input.value=next;
+  if(options.send!==false && online.ws && online.ws.readyState===WebSocket.OPEN){
+    online.ws.send(JSON.stringify({type:'client.hello',displayName:next}));
+  }
+  renderOnlineStatus();
+  return next;
+}
+function shortOnlineName(value,fallback){
+  const text=String(value||'').trim()||fallback;
+  return text.length>8 ? text.slice(0,8) : text;
+}
+function escapeOnlineText(value){
+  return String(value??'').replace(/[&<>"']/g,ch=>({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;'
+  }[ch]));
+}
+function renderOnlineRoster(){
+  const el=document.getElementById('onlineRoster'); if(!el) return;
+  if(!online.connected && !online.roomCode){ el.innerHTML=''; return; }
+  const presence=online.presence||{};
+  const players=presence.players||{};
+  const pending=new Set(presence.pendingTeams||[]);
+  const seatHtml=(team)=>{
+    const seat=players[team]||null;
+    const isMe=online.role===team && online.connected;
+    const connected=!!seat?.connected;
+    const label=team==='b'?'青':'赤';
+    const name=seat ? shortOnlineName(seat.displayName,label) : '空席';
+    const mark=pending.has(team)?' ✓':'';
+    const classes=['onlineSeat',team];
+    if(!connected) classes.push('off');
+    if(pending.has(team)) classes.push('pending');
+    if(isMe) classes.push('me');
+    const title=escapeOnlineText(`${label}: ${seat?.displayName||'空席'}${connected?'':' / 未接続'}`);
+    return `<div class="${classes.join(' ')}" title="${title}"><span class="onlineDot"></span><span>${escapeOnlineText(label)} ${escapeOnlineText(name)}${mark}</span></div>`;
+  };
+  const spectators=Number.isFinite(presence.spectators) ? presence.spectators : 0;
+  el.innerHTML=seatHtml('b')+seatHtml('r')+
+    `<div class="onlineSeat spec" title="観戦 ${spectators}"><span class="onlineDot"></span><span>観戦 ${spectators}</span></div>`;
 }
 function renderOnlineStatus(){
   const el=document.getElementById('onlineStatus'); if(!el) return;
@@ -1363,10 +1513,20 @@ function renderOnlineStatus(){
   el.className='onlineStatus'+(online.statusKind?' '+online.statusKind:'');
   const input=document.getElementById('onlineRoomInput');
   if(input && online.roomCode && document.activeElement!==input) input.value=online.roomCode;
+  const nameInput=document.getElementById('onlineNameInput');
+  if(nameInput && document.activeElement!==nameInput) nameInput.value=online.displayName;
   const shareBtn=document.getElementById('onlineShareBtn');
   if(shareBtn) shareBtn.disabled=!online.roomCode;
+  const leaveBtn=document.getElementById('onlineLeaveBtn');
+  if(leaveBtn) leaveBtn.disabled=!online.connected || online.leaving;
+  const seated=online.enabled && (online.role==='b'||online.role==='r');
+  const resignBtn=document.getElementById('onlineResignBtn');
+  if(resignBtn) resignBtn.disabled=!seated || state.matchOver || online.leaving;
+  const rematchBtn=document.getElementById('onlineRematchBtn');
+  if(rematchBtn) rematchBtn.disabled=!seated || !state.matchOver || online.leaving;
   const btn=document.getElementById('endTurnBtn');
   if(btn){
+    btn.disabled=isOnlineSpectator();
     if(online.connected && !online.enabled) btn.textContent='観戦中';
     else btn.textContent=online.enabled ? (online.waiting?'送信済み':`TURN END（${localTeamLabel()}送信）`) : 'TURN END（決定）';
   }
@@ -1380,6 +1540,7 @@ function renderOnlineStatus(){
       names[1].textContent='あいて';
     }
   }
+  renderOnlineRoster();
 }
 function isMoveCommand(c){ return c.type==='move'||c.type==='dribble'; }
 function isBallCommand(c){ return c.type==='pass'||c.type==='throughpass'||c.type==='shoot'; }
@@ -1400,6 +1561,7 @@ let chainPassedIds=new Set(); // このターンに「パス／スルーパス�
 
 /* ===== 描画 ===== */
 const boardEl=document.getElementById('board');
+let replayHiddenPieceIds=new Set();
 function cellAt(x,y){return BOARD.find(c=>c.x===x&&c.y===y);}
 function piecesAt(x,y){return pieces.filter(p=>p.x===x&&p.y===y);}
 
@@ -1429,7 +1591,7 @@ function render(){
       if(state.selected.x===c.x && state.selected.y===c.y) el.classList.add('selected');
     }
     el.addEventListener('click',()=>onCellClick(c.x,c.y));
-    const ps=piecesAt(c.x,c.y);
+    const ps=piecesAt(c.x,c.y).filter(p=>!replayHiddenPieceIds.has(p.id));
     // 選択の扇ポップアップ中：対象マスは扇で描くので通常駒はスキップ、他マスは暗転
     const inPopup = state.popup && state.popup.x===c.x && state.popup.y===c.y;
     const dimOthers = state.popup && !inPopup;
@@ -1525,7 +1687,8 @@ function render(){
   }
   renderOnlineStatus();
   const hint=document.getElementById('modeHint');
-  if(state.phase==='replay')hint.textContent='▶ リプレイ再生中…';
+  if(isOnlineSpectator())hint.textContent='観戦中：試合進行を表示中';
+  else if(state.phase==='replay')hint.textContent='▶ リプレイ再生中…';
   else if(state.mode==='pass')hint.textContent='パス：青い丸のマス（味方/空マス）をタップ／ボールをタップした際の選択肢からシュートも可能';
   else if(state.mode==='move')hint.textContent='移動/ドリブル：黄色いマスをタップ／ボールをタップでパスに切替';
   else hint.textContent='駒をタップ＝移動、ボールをタップ＝パス／シュート（Unity版準拠）。仕込んだら TURN END';
@@ -1822,6 +1985,7 @@ function snapshotHalfToLocal(half){ return half==='second' ? '後半' : '前半'
 function applySnapshotToLocal(snapshot){
   if(!snapshot||!snapshot.game) return;
   const game=snapshot.game;
+  replayHiddenPieceIds.clear();
   pieces=(game.pieces||[]).map(p=>({...p}));
   ball=game.ball ? {...game.ball} : ball;
   lastHadBallTeam=ball.lastTeam||lastHadBallTeam;
@@ -1842,7 +2006,7 @@ function applySnapshotToLocal(snapshot){
     }
   }
   state.matchOver=snapshot.status==='finished';
-  state.phase=state.matchOver?'ended':'input';
+  state.phase=state.matchOver?'ended':(isOnlineSpectator()?'replay':'input');
   clearSelection();
   resetChain();
 }
@@ -1883,13 +2047,58 @@ async function replayServerKickSequence(event,eventFrom){
     }
   }
 }
+function syncBallAfterServerEvent(event){
+  if(!event) return;
+  if(event.type==='pass.completed'){
+    const receiver=pieceById(event.details?.receiverId);
+    if(receiver) setBallToPiece(receiver,true);
+    return;
+  }
+  if((event.type==='ball.moved'||event.type==='pass.failed'||event.type==='pass.cut') && event.to){
+    setBallToCell(event.to.x,event.to.y,event.team,true);
+    return;
+  }
+  if(event.type==='looseball.picked'){
+    const picker=pieceById(event.pieceId);
+    if(picker) setBallToPiece(picker,true);
+    return;
+  }
+  if(event.type==='offside' && event.to){
+    const receiver=pieceById(event.pieceId);
+    if(receiver && receiver.sx!=null && receiver.sy!=null){ receiver.x=receiver.sx; receiver.y=receiver.sy; }
+    setBallToCell(event.to.x,event.to.y,event.details?.sourceTeam||event.team,true);
+  }
+}
+async function replayServerPieceMove(event){
+  const piece=pieceById(event?.pieceId);
+  if(!piece||!event.from||!event.to) return;
+  replayHiddenPieceIds.add(piece.id);
+  render();
+  const pieceMove=animatePieceMove(piece,event.from,event.to,{duration:event.details?.carryBall?330:280});
+  if(event.details?.carryBall){
+    await Promise.all([
+      pieceMove,
+      animateBallFlight(event.from,event.to,event.team,{kind:'dribble',duration:330,arc:14}),
+    ]);
+  }else{
+    await pieceMove;
+  }
+  replayHiddenPieceIds.delete(piece.id);
+  piece.x=event.to.x;
+  piece.y=event.to.y;
+  piece.moved=true;
+  if(event.details?.carryBall) setBallToPiece(piece,true);
+  render();
+}
 async function playServerEvent(event){
   onlineLogEvent(event);
   const eventFrom=event?.from||event?.details?.from||null;
-  if(event?.from && event?.to && (event.type==='ball.moved'||event.type==='pass.completed'||event.type==='pass.failed')){
+  if(event?.from && event?.to && event.type==='piece.moved'){
+    await replayServerPieceMove(event);
+  }else if(event?.from && event?.to && (event.type==='ball.moved'||event.type==='pass.completed'||event.type==='pass.failed')){
     await animateBallFlight(event.from,event.to,event.team,{kind:'pass'});
-  }else if(event?.from && event?.to && event.type==='piece.moved' && event.details?.carryBall){
-    await animateBallFlight(event.from,event.to,event.team,{kind:'dribble',duration:320,arc:14});
+    syncBallAfterServerEvent(event);
+    render();
   }else if(eventFrom && event?.type==='shot.goal'){
     await replayServerKickSequence(event,eventFrom);
     await animateBallFlight(eventFrom,goalCellFor(event.team),event.team,{kind:'shoot',duration:520,arc:58});
@@ -1901,8 +2110,16 @@ async function playServerEvent(event){
     if(cutAt&&event.to&&(cutAt.x!==event.to.x||cutAt.y!==event.to.y)){
       await animateBallFlight(cutAt,event.to,event.team,{kind:'pass',duration:180,arc:8});
     }
+    syncBallAfterServerEvent(event);
+    render();
   }else if(event?.type==='offside'){
     await showCutinAtPiece('offside',850,event.to?.x,event.to?.y);
+    syncBallAfterServerEvent(event);
+    render();
+  }else if(event?.type==='looseball.picked'){
+    syncBallAfterServerEvent(event);
+    await showCutinAtPiece('ballKeep',650,event.to?.x,event.to?.y);
+    render();
   }else if(event?.type==='tackle.success'){
     await showCutinAtPiece('tackleSuccess',850,event.to?.x,event.to?.y);
   }else if(event?.type==='tackle.foul'){
@@ -1953,6 +2170,7 @@ function deadlineSuffix(inputDeadlineAt){
 }
 function applyOnlinePresence(presence){
   if(!presence||!online.roomCode) return;
+  online.presence=presence;
   if(online.connected && !online.enabled){
     setOnlineStatus(`${online.roomCode} / 観戦`,'live');
     return;
@@ -1976,7 +2194,7 @@ function onlineSocketUrl(roomCode,role){
   url.protocol=url.protocol==='https:'?'wss:':'ws:';
   url.searchParams.set('clientId',online.clientId);
   url.searchParams.set('role',role||'auto');
-  url.searchParams.set('name','Player');
+  url.searchParams.set('name',online.displayName);
   return url.toString();
 }
 function closeOnlineSocket(){
@@ -1986,7 +2204,16 @@ function closeOnlineSocket(){
   }
   online.ws=null;
 }
+function goOffline(status='OFFLINE',kind=''){
+  closeOnlineSocket();
+  online.connected=false; online.enabled=false; online.role=null; online.waiting=false; online.leaving=false;
+  online.presence=null;
+  online.roomCode=null;
+  updateRoomUrl(null);
+  setOnlineStatus(status,kind);
+}
 async function createOnlineRoom(){
+  syncOnlineDisplayName({send:false});
   online.apiBase=defaultOnlineApiBase();
   setOnlineStatus('ROOM作成中…','wait');
   const res=await fetch(`${online.apiBase}/matches`,{method:'POST'});
@@ -1995,6 +2222,7 @@ async function createOnlineRoom(){
   await connectOnlineRoom(data.roomCode,'b',data.snapshot);
 }
 async function joinOnlineRoom(){
+  syncOnlineDisplayName({send:false});
   const input=document.getElementById('onlineRoomInput');
   const roomCode=normalizeOnlineRoomInput(input?.value||'');
   if(!roomCode){ setOnlineStatus('ROOM CODEを入力してください','err'); return; }
@@ -2010,6 +2238,8 @@ async function connectOnlineRoom(roomCode,role,snapshot){
   online.roomCode=roomCode;
   online.role=null;
   online.waiting=false;
+  online.leaving=false;
+  online.presence=null;
   online.queue=Promise.resolve();
   if(snapshot) applySnapshotToLocal(snapshot);
   const ws=new WebSocket(onlineSocketUrl(roomCode,role));
@@ -2018,8 +2248,12 @@ async function connectOnlineRoom(roomCode,role,snapshot){
   ws.onerror=()=>setOnlineStatus('接続エラー','err');
   ws.onclose=()=>{
     if(online.ws===ws){
-      online.connected=false; online.enabled=false; online.role=null; online.waiting=false;
-      setOnlineStatus(`${online.roomCode||roomCode} 切断`,'err');
+      if(online.leaving){
+        goOffline('OFFLINE','');
+      }else{
+        online.connected=false; online.enabled=false; online.role=null; online.waiting=false;
+        setOnlineStatus(`${online.roomCode||roomCode} 切断`,'err');
+      }
       render();
     }
   };
@@ -2034,6 +2268,8 @@ async function handleOnlineEnvelope(envelope){
   const payload=envelope.payload;
   if(envelope.type==='room.assigned'){
     online.role=payload.role;
+    online.displayName=normalizeOnlineDisplayName(payload.displayName||online.displayName);
+    saveOnlineDisplayName(online.displayName);
     online.connected=true;
     online.enabled=online.role==='b'||online.role==='r';
     applySnapshotToLocal(payload.snapshot);
@@ -2053,6 +2289,23 @@ async function handleOnlineEnvelope(envelope){
     applyOnlinePresence(payload);
     return;
   }
+  if(envelope.type==='seat.left'){
+    if(payload.clientId===online.clientId){
+      myCommands=[]; oppCommands=[];
+      log('ROOMから退出しました');
+      goOffline('OFFLINE','');
+      render();
+      return;
+    }
+    const wasWaiting=online.waiting;
+    online.waiting=false;
+    if(wasWaiting){ myCommands=[]; oppCommands=[]; }
+    if(payload.snapshot) applySnapshotToLocal(payload.snapshot);
+    if(payload.role==='b'||payload.role==='r') log(`${eventTeamName(payload.role)} が退出しました`);
+    applyOnlinePresence(payload.presence);
+    render();
+    return;
+  }
   if(envelope.type==='room.error'){
     setOnlineStatus(payload.message||'ROOM ERROR','err');
     log(payload.message||'ROOM ERROR');
@@ -2067,6 +2320,33 @@ async function handleOnlineEnvelope(envelope){
   }
   if(envelope.type==='match.turn.resolved'){
     await playServerResolution(payload.resolution,payload.snapshot,payload.reason);
+    return;
+  }
+  if(envelope.type==='match.resigned'){
+    applySnapshotToLocal(payload.snapshot);
+    online.waiting=false;
+    myCommands=[]; oppCommands=[];
+    const loser=eventTeamName(payload.team), winner=eventTeamName(payload.winner);
+    log(`${loser} が投了しました。${winner} の勝利`);
+    setOnlineStatus(`${online.roomCode} / ${winner} 勝利`,'live');
+    render();
+    return;
+  }
+  if(envelope.type==='match.rematch.requested'){
+    if(payload.snapshot) applySnapshotToLocal(payload.snapshot);
+    const who=eventTeamName(payload.team);
+    log(payload.team===localPlayerTeam()?'再戦希望を送信しました':`${who} が再戦を希望しています`);
+    setOnlineStatus(`${online.roomCode} / 再戦待ち`,'wait');
+    render();
+    return;
+  }
+  if(envelope.type==='match.rematch.started'){
+    applySnapshotToLocal(payload.snapshot);
+    myCommands=[]; oppCommands=[]; online.waiting=false;
+    if(online.connected && !online.enabled) state.phase='replay';
+    log('―― 再戦開始 ――');
+    setOnlineStatus(online.enabled?`${online.roomCode} / ${localTeamLabel()} / TURN ${state.turn}`:`${online.roomCode} / 観戦`,'live');
+    render();
     return;
   }
   if(envelope.type==='room.snapshot'){
@@ -2085,9 +2365,45 @@ async function copyOnlineRoomUrl(){
     setOnlineStatus('ROOM URLをログに表示しました','wait');
   }
 }
+function sendOnlineControl(type){
+  if(!online.ws||online.ws.readyState!==WebSocket.OPEN){
+    setOnlineStatus('オンライン接続がありません','err');
+    log('オンライン接続がありません');
+    return false;
+  }
+  online.ws.send(JSON.stringify({type}));
+  return true;
+}
+function leaveOnlineRoom(){
+  if(!online.roomCode){
+    goOffline('OFFLINE','');
+    render();
+    return;
+  }
+  if(!online.ws||online.ws.readyState!==WebSocket.OPEN){
+    goOffline('OFFLINE','');
+    render();
+    return;
+  }
+  online.leaving=true;
+  if(sendOnlineControl('match.leave')) setOnlineStatus(`${online.roomCode} 退出中…`,'wait');
+  renderOnlineStatus();
+}
+function resignOnlineMatch(){
+  if(!online.enabled||!(online.role==='b'||online.role==='r')){ log('観戦中は投了できません'); return; }
+  if(state.matchOver){ log('試合は終了しています'); return; }
+  if(!confirm('投了しますか？')) return;
+  if(sendOnlineControl('match.resign')) setOnlineStatus('投了送信中…','wait');
+}
+function requestOnlineRematch(){
+  if(!online.enabled||!(online.role==='b'||online.role==='r')){ log('観戦中は再戦希望を送れません'); return; }
+  if(!state.matchOver){ log('再戦は試合終了後に使えます'); return; }
+  if(sendOnlineControl('match.rematch.request')) setOnlineStatus('再戦希望を送信しました','wait');
+}
 function autoJoinOnlineRoomFromUrl(){
   const roomCode=roomCodeFromUrl();
   if(!roomCode) return;
+  syncOnlineDisplayName({send:false});
   const input=document.getElementById('onlineRoomInput');
   if(input) input.value=roomCode;
   online.apiBase=defaultOnlineApiBase();
@@ -2125,13 +2441,33 @@ document.getElementById('onlineJoinBtn').addEventListener('click',()=>{
 document.getElementById('onlineShareBtn').addEventListener('click',()=>{
   copyOnlineRoomUrl().catch(err=>{ console.error(err); setOnlineStatus(err.message||'URLコピー失敗','err'); });
 });
+document.getElementById('onlineNameInput').value=online.displayName;
+document.getElementById('onlineNameInput').addEventListener('change',()=>{
+  syncOnlineDisplayName({send:true});
+});
+document.getElementById('onlineNameInput').addEventListener('blur',()=>{
+  syncOnlineDisplayName({send:true});
+});
+document.getElementById('onlineNameInput').addEventListener('keydown',ev=>{
+  if(ev.key==='Enter'){
+    ev.preventDefault();
+    syncOnlineDisplayName({send:true});
+    ev.currentTarget.blur();
+  }
+});
+document.getElementById('onlineLeaveBtn').addEventListener('click',()=>{
+  leaveOnlineRoom();
+});
+document.getElementById('onlineResignBtn').addEventListener('click',()=>{
+  resignOnlineMatch();
+});
+document.getElementById('onlineRematchBtn').addEventListener('click',()=>{
+  requestOnlineRematch();
+});
 
 // 旧・下部モードボタンは撤去。選択は盤上ポップアップ（駒タップ=移動／ボールタップ=パス／シュートも扇内の選択肢）。
 document.getElementById('resetBtn').addEventListener('click',()=>{
-  closeOnlineSocket();
-  online.connected=false; online.enabled=false; online.role=null; online.roomCode=null; online.waiting=false;
-  updateRoomUrl(null);
-  setOnlineStatus('OFFLINE','');
+  goOffline('OFFLINE','');
   buildTeams();myCommands=[];oppCommands=[];state={turn:1,half:'前半',scoreSelf:0,scoreOpp:0,selected:null,mode:'idle',expanded:null,atFirst:null,atSecond:null,matchOver:false,ballSelected:false,popup:null,phase:'input'};log('配置をリセットしました');render();
 });
 document.getElementById('tackleDemoBtn').addEventListener('click',async ()=>{
